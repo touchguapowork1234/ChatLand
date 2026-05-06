@@ -117,9 +117,9 @@ export default function CallProvider({ userId, children }: { userId: string; chi
       .channel(`incoming_${userId}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'calls',
-        filter: `receiver_id=eq.${userId}`,
       }, async payload => {
         const call = payload.new as Call
+        if (call.receiver_id !== userId) return
         if (call.status !== 'ringing') return
         const { data: caller } = await supabase.from('profiles').select('*').eq('id', call.caller_id).single()
         setIncomingData({ call, caller: caller as Profile })
