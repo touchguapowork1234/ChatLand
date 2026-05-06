@@ -38,7 +38,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
     setFriends(
       (accepted ?? []).map(r => ({
         requestId: r.id,
-        profile: (r.sender_id === currentUserId ? r.receiver : r.sender) as Profile,
+        profile: (r.sender_id === currentUserId ? r.receiver : r.sender) as unknown as Profile,
       }))
     )
 
