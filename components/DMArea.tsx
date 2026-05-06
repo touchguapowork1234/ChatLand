@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Phone, Send } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { DmMessage, Profile } from '@/lib/types'
@@ -16,11 +16,17 @@ interface Props {
 
 export default function DMArea({ dmId, otherUser, currentUserId, initialMessages }: Props) {
   const supabase = createClient()
-  const { startCall } = useCall()
+  const { callState, callingUserId, incomingCallerId, isMuted, duration,
+          startCall, endCall, acceptCall, declineCall, toggleMute } = useCall()
+
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages)
-  const [content, setContent] = useState('')
-  const [sending, setSending] = useState(false)
+  const [content, setContent]   = useState('')
+  const [sending, setSending]   = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+
+  const isCallingThis  = callState === 'calling'  && callingUserId  === otherUser.id
+  const isRingingThis  = callState === 'ringing'  && incomingCallerId === otherUser.id
+  const isActiveThis   = callState === 'active'   && (callingUserId === otherUser.id || incomingCallerId === otherUser.id)
 
   useEffect(() => { setMessages(initialMessages) }, [dmId])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
@@ -48,6 +54,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setSending(false)
   }
 
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
   return (
@@ -55,25 +62,77 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-xs font-bold">
+          <div className="w-7 h-7 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-xs font-bold select-none">
             {otherUser.username.charAt(0).toUpperCase()}
           </div>
           <span className="font-semibold text-[#dbdee1]">{userTag(otherUser)}</span>
         </div>
-        <button
-          onClick={() => startCall(otherUser.id, otherUser)}
-          title="Start voice call"
-          className="text-[#949ba4] hover:text-[#dbdee1] transition-colors p-1.5 rounded hover:bg-[#383a40]"
-        >
-          <Phone className="w-4 h-4" />
-        </button>
+        {callState === 'idle' && (
+          <button onClick={() => startCall(otherUser.id, otherUser)} title="Start voice call"
+            className="text-[#949ba4] hover:text-[#dbdee1] transition-colors p-1.5 rounded hover:bg-[#383a40]">
+            <Phone className="w-4 h-4" />
+          </button>
+        )}
       </div>
+
+      {/* ── Call bar ── */}
+      {isCallingThis && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
+          <div className="flex gap-1 items-center">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#f0b132] animate-ping" />
+          </div>
+          <span className="text-[#f0b132] text-sm font-medium flex-1">
+            Calling {userTag(otherUser)}…
+          </span>
+          <button onClick={endCall}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
+            <PhoneOff className="w-3.5 h-3.5" /> End Call
+          </button>
+        </div>
+      )}
+
+      {isRingingThis && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
+          <Phone className="w-4 h-4 text-[#23a55a] animate-bounce shrink-0" />
+          <span className="text-[#23a55a] text-sm font-medium flex-1">
+            Incoming call from {userTag(otherUser)}
+          </span>
+          <button onClick={acceptCall}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-semibold transition-colors">
+            <Phone className="w-3.5 h-3.5" /> Accept
+          </button>
+          <button onClick={declineCall}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
+            <PhoneOff className="w-3.5 h-3.5" /> Decline
+          </button>
+        </div>
+      )}
+
+      {isActiveThis && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
+          <div className="w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
+          <span className="text-[#23a55a] text-sm font-medium flex-1">
+            Voice Connected — {fmt(duration)}
+          </span>
+          <button onClick={toggleMute}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              isMuted ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#383a40] text-[#dbdee1] hover:bg-[#404249]'
+            }`}>
+            {isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+            {isMuted ? 'Unmute' : 'Mute'}
+          </button>
+          <button onClick={endCall}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
+            <PhoneOff className="w-3.5 h-3.5" /> End Call
+          </button>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center">
-            <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-2xl font-bold mb-4">
+            <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
               {otherUser.username.charAt(0).toUpperCase()}
             </div>
             <p className="text-2xl font-bold text-[#dbdee1] mb-1">{userTag(otherUser)}</p>
@@ -88,9 +147,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           const isMe = msg.sender_id === currentUserId
 
           return (
-            <div key={msg.id} className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
+            <div key={msg.id}
+              className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
               {!grouped ? (
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
                   {(msg.profiles?.username ?? '?').charAt(0).toUpperCase()}
                 </div>
               ) : (
@@ -103,9 +163,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               <div className="flex-1 min-w-0">
                 {!grouped && (
                   <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="font-semibold text-[#dbdee1] text-sm">
-                      {userTag(msg.profiles)}
-                    </span>
+                    <span className="font-semibold text-[#dbdee1] text-sm">{userTag(msg.profiles)}</span>
                     <span className="text-[11px] text-[#949ba4]">{fmtTime(msg.created_at)}</span>
                   </div>
                 )}

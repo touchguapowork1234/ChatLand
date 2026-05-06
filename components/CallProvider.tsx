@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { Phone, PhoneOff, Mic, MicOff } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Call, Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
@@ -10,10 +10,23 @@ type CallState = 'idle' | 'calling' | 'ringing' | 'active'
 
 interface CallCtx {
   callState: CallState
+  callingUserId: string | null
+  incomingCallerId: string | null
+  isMuted: boolean
+  duration: number
   startCall: (receiverId: string, receiverProfile: Profile) => Promise<void>
+  endCall: () => Promise<void>
+  acceptCall: () => Promise<void>
+  declineCall: () => Promise<void>
+  toggleMute: () => void
 }
 
-const CallContext = createContext<CallCtx>({ callState: 'idle', startCall: async () => {} })
+const CallContext = createContext<CallCtx>({
+  callState: 'idle', callingUserId: null, incomingCallerId: null,
+  isMuted: false, duration: 0,
+  startCall: async () => {}, endCall: async () => {}, acceptCall: async () => {},
+  declineCall: async () => {}, toggleMute: () => {},
+})
 export const useCall = () => useContext(CallContext)
 
 const ICE = [
@@ -23,22 +36,27 @@ const ICE = [
 
 export default function CallProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
   const supabase = createClient()
-  const [callState, setCallState] = useState<CallState>('idle')
-  const [otherUser, setOtherUser] = useState<Profile | null>(null)
-  const [incomingData, setIncomingData] = useState<{ call: Call; caller: Profile } | null>(null)
-  const [isMuted, setIsMuted] = useState(false)
-  const [duration, setDuration] = useState(0)
+
+  const [callState, setCallState]         = useState<CallState>('idle')
+  const [otherUser, setOtherUser]         = useState<Profile | null>(null)
+  const [callingUserId, setCallingUserId] = useState<string | null>(null)
+  const [incomingCallerId, setIncomingCallerId] = useState<string | null>(null)
+  const [incomingData, setIncomingData]   = useState<{ call: Call; caller: Profile } | null>(null)
+  const [showModal, setShowModal]         = useState(false)
+  const [isMuted, setIsMuted]             = useState(false)
+  const [duration, setDuration]           = useState(0)
 
   const pcRef       = useRef<RTCPeerConnection | null>(null)
   const localRef    = useRef<MediaStream | null>(null)
   const audioRef    = useRef<HTMLAudioElement | null>(null)
   const callIdRef   = useRef<string | null>(null)
   const timerRef    = useRef<ReturnType<typeof setInterval> | null>(null)
-  const subRefs     = useRef<ReturnType<typeof supabase.channel>[]>([])
+  // Only call-specific subs — incoming call sub is tracked separately
+  const callSubsRef = useRef<ReturnType<typeof supabase.channel>[]>([])
 
   const removeSubs = () => {
-    subRefs.current.forEach(c => supabase.removeChannel(c))
-    subRefs.current = []
+    callSubsRef.current.forEach(c => supabase.removeChannel(c))
+    callSubsRef.current = []
   }
 
   const cleanup = () => {
@@ -51,39 +69,16 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     callIdRef.current = null
     setCallState('idle')
     setOtherUser(null)
+    setCallingUserId(null)
+    setIncomingCallerId(null)
     setIsMuted(false)
     setDuration(0)
   }
 
-  const makePC = () => {
-    const pc = new RTCPeerConnection({ iceServers: ICE })
-    pc.ontrack = e => { if (audioRef.current) audioRef.current.srcObject = e.streams[0] }
-    pcRef.current = pc
-    return pc
-  }
-
-  const subscribeIce = (callId: string, pc: RTCPeerConnection) => {
-    pc.onicecandidate = async ({ candidate }) => {
-      if (!candidate) return
-      await supabase.from('ice_candidates').insert({ call_id: callId, from_user: userId, candidate })
-    }
-    const ch = supabase.channel(`ice_${callId}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'ice_candidates',
-        filter: `call_id=eq.${callId}`,
-      }, payload => {
-        const row = payload.new as { from_user: string; candidate: RTCIceCandidateInit }
-        if (row.from_user !== userId) {
-          pc.addIceCandidate(new RTCIceCandidate(row.candidate)).catch(() => {})
-        }
-      })
-      .subscribe()
-    subRefs.current.push(ch)
-  }
-
-  // Listen for incoming calls
+  // Persistent incoming-call subscription — never in callSubsRef, so cleanup() won't kill it
   useEffect(() => {
-    const ch = supabase.channel(`incoming_${userId}`)
+    const ch = supabase
+      .channel(`incoming_${userId}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'calls',
         filter: `receiver_id=eq.${userId}`,
@@ -92,23 +87,61 @@ export default function CallProvider({ userId, children }: { userId: string; chi
         if (call.status !== 'ringing') return
         const { data: caller } = await supabase.from('profiles').select('*').eq('id', call.caller_id).single()
         setIncomingData({ call, caller: caller as Profile })
+        setIncomingCallerId(call.caller_id)
         setCallState('ringing')
+        setShowModal(true)
       })
       .subscribe()
-    subRefs.current.push(ch)
+
     return () => { supabase.removeChannel(ch) }
   }, [userId])
+
+  const makePC = () => {
+    const pc = new RTCPeerConnection({ iceServers: ICE })
+    pc.ontrack = e => { if (audioRef.current) audioRef.current.srcObject = e.streams[0] }
+    pcRef.current = pc
+    return pc
+  }
+
+  const setupIce = (callId: string, pc: RTCPeerConnection, buffered: RTCIceCandidate[]) => {
+    // Flush any ICE candidates that arrived before we had the call ID
+    buffered.forEach(c =>
+      supabase.from('ice_candidates').insert({ call_id: callId, from_user: userId, candidate: c })
+    )
+
+    pc.onicecandidate = ({ candidate }) => {
+      if (candidate)
+        supabase.from('ice_candidates').insert({ call_id: callId, from_user: userId, candidate })
+    }
+
+    const ch = supabase.channel(`ice_${callId}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'ice_candidates',
+        filter: `call_id=eq.${callId}`,
+      }, payload => {
+        const row = payload.new as { from_user: string; candidate: RTCIceCandidateInit }
+        if (row.from_user !== userId)
+          pc.addIceCandidate(new RTCIceCandidate(row.candidate)).catch(() => {})
+      })
+      .subscribe()
+    callSubsRef.current.push(ch)
+  }
 
   const startCall = async (receiverId: string, receiverProfile: Profile) => {
     if (callState !== 'idle') return
     setCallState('calling')
     setOtherUser(receiverProfile)
+    setCallingUserId(receiverId)
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       localRef.current = stream
       const pc = makePC()
       stream.getTracks().forEach(t => pc.addTrack(t, stream))
+
+      // Buffer ICE candidates that fire before we have the call ID
+      const iceBuffer: RTCIceCandidate[] = []
+      pc.onicecandidate = ({ candidate }) => { if (candidate) iceBuffer.push(candidate) }
 
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
@@ -120,23 +153,24 @@ export default function CallProvider({ userId, children }: { userId: string; chi
 
       if (!call) { cleanup(); return }
       callIdRef.current = call.id
-      subscribeIce(call.id, pc)
+      setupIce(call.id, pc, iceBuffer)
 
       const updCh = supabase.channel(`callupd_${call.id}`)
         .on('postgres_changes', {
           event: 'UPDATE', schema: 'public', table: 'calls',
           filter: `id=eq.${call.id}`,
         }, async payload => {
-          const updated = payload.new as Call
-          if (updated.status === 'active' && updated.answer) {
-            await pc.setRemoteDescription(new RTCSessionDescription(updated.answer))
+          const upd = payload.new as Call
+          if (upd.status === 'active' && upd.answer) {
+            await pc.setRemoteDescription(new RTCSessionDescription(upd.answer))
             setCallState('active')
             timerRef.current = setInterval(() => setDuration(d => d + 1), 1000)
           }
-          if (['ended', 'declined', 'missed'].includes(updated.status)) cleanup()
+          if (['ended', 'declined', 'missed'].includes(upd.status)) cleanup()
         })
         .subscribe()
-      subRefs.current.push(updCh)
+      callSubsRef.current.push(updCh)
+
     } catch { cleanup() }
   }
 
@@ -144,6 +178,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     if (!incomingData) return
     const { call, caller } = incomingData
     setIncomingData(null)
+    setShowModal(false)
     setCallState('active')
     setOtherUser(caller)
     callIdRef.current = call.id
@@ -153,19 +188,17 @@ export default function CallProvider({ userId, children }: { userId: string; chi
       localRef.current = stream
       const pc = makePC()
       stream.getTracks().forEach(t => pc.addTrack(t, stream))
-      subscribeIce(call.id, pc)
 
-      // Read any ICE candidates already stored by caller
-      const { data: storedIce } = await supabase
-        .from('ice_candidates')
-        .select('*')
-        .eq('call_id', call.id)
-        .neq('from_user', userId)
-      storedIce?.forEach(row =>
-        pc.addIceCandidate(new RTCIceCandidate(row.candidate)).catch(() => {})
-      )
+      // Read ICE candidates already stored by caller
+      const { data: stored } = await supabase
+        .from('ice_candidates').select('*').eq('call_id', call.id).neq('from_user', userId)
+
+      // Set up persistent ICE handler (no buffered candidates from our side yet)
+      setupIce(call.id, pc, [])
 
       await pc.setRemoteDescription(new RTCSessionDescription(call.offer!))
+      stored?.forEach(r => pc.addIceCandidate(new RTCIceCandidate(r.candidate)).catch(() => {}))
+
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
       await supabase.from('calls').update({ status: 'active', answer }).eq('id', call.id)
@@ -180,6 +213,8 @@ export default function CallProvider({ userId, children }: { userId: string; chi
       .update({ status: 'declined', ended_at: new Date().toISOString() })
       .eq('id', incomingData.call.id)
     setIncomingData(null)
+    setShowModal(false)
+    setIncomingCallerId(null)
     setCallState('idle')
   }
 
@@ -199,14 +234,21 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   return (
-    <CallContext.Provider value={{ callState, startCall }}>
+    <CallContext.Provider value={{
+      callState, callingUserId, incomingCallerId, isMuted, duration,
+      startCall, endCall, acceptCall, declineCall, toggleMute,
+    }}>
       {children}
       <audio ref={audioRef} autoPlay />
 
-      {/* Incoming call */}
-      {incomingData && (
+      {/* Full-screen incoming call modal — shown when NOT in that DM */}
+      {showModal && incomingData && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-[#2b2d31] rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+          <div className="bg-[#2b2d31] rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center relative">
+            <button onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 text-[#949ba4] hover:text-[#dbdee1]">
+              <X className="w-4 h-4" />
+            </button>
             <div className="w-20 h-20 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4">
               {incomingData.caller.username.charAt(0).toUpperCase()}
             </div>
@@ -226,11 +268,11 @@ export default function CallProvider({ userId, children }: { userId: string; chi
         </div>
       )}
 
-      {/* Active / calling overlay */}
+      {/* Floating overlay for calls NOT in the current DM view */}
       {(callState === 'calling' || callState === 'active') && otherUser && (
         <div className="fixed bottom-6 right-6 bg-[#232428] border border-[#3f4147] rounded-2xl p-4 shadow-2xl z-40 w-60">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold shrink-0 text-sm">
+            <div className="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold shrink-0 text-sm select-none">
               {otherUser.username.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
@@ -253,8 +295,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
             </button>
             <button onClick={endCall}
               className="flex-1 py-2 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white flex items-center justify-center gap-1 transition-colors">
-              <PhoneOff className="w-3.5 h-3.5" />
-              End
+              <PhoneOff className="w-3.5 h-3.5" />End
             </button>
           </div>
         </div>
