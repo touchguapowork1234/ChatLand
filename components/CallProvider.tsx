@@ -79,9 +79,9 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     if (sigRef.current) { supabase.removeChannel(sigRef.current); sigRef.current = null }
   }
 
-  // Play ringtone while calling or receiving; stop on any other state
+  // Play ringtone only for the receiver; stop on any other state
   useEffect(() => {
-    if (callState === 'ringing' || callState === 'calling') {
+    if (callState === 'ringing') {
       const audio = new Audio('/incoming_ring.mp3')
       audio.loop = true
       audio.play().catch(() => {})
