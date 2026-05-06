@@ -111,17 +111,18 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     timerRef.current = setInterval(() => setDuration(d => d + 1), 1000)
   }
 
-  // ── Persistent incoming-call listener (separate from subsRef so cleanup() won't kill it) ──
+  // ── Persistent incoming-call listener via broadcast (more reliable than postgres_changes) ──
   useEffect(() => {
+    if (!userId) return
     const ch = supabase
-      .channel(`incoming_${userId}`)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'calls',
-      }, async payload => {
-        const call = payload.new as Call
-        if (call.receiver_id !== userId) return
-        if (call.status !== 'ringing') return
-        const { data: caller } = await supabase.from('profiles').select('*').eq('id', call.caller_id).single()
+      .channel(`user:${userId}`)
+      .on('broadcast', { event: 'incoming_call' }, async ({ payload }) => {
+        const { data: call } = await supabase
+          .from('calls').select('*').eq('id', payload.callId).single()
+        if (!call || call.status !== 'ringing') return
+        const { data: caller } = await supabase
+          .from('profiles').select('*').eq('id', call.caller_id).single()
+        if (!caller) return
         setIncomingData({ call, caller: caller as Profile })
         setIncomingCallerId(call.caller_id)
         setCallState('ringing')
@@ -148,6 +149,15 @@ export default function CallProvider({ userId, children }: { userId: string; chi
 
       if (!call) { cleanup(); return }
       callIdRef.current = call.id
+
+      // Notify receiver via broadcast on their personal channel
+      const notifyCh = supabase.channel(`user:${receiverId}`)
+      notifyCh.subscribe(s => {
+        if (s === 'SUBSCRIBED') {
+          notifyCh.send({ type: 'broadcast', event: 'incoming_call', payload: { callId: call.id } })
+          setTimeout(() => supabase.removeChannel(notifyCh), 2000)
+        }
+      })
 
       // ICE buffer: collect candidates before remote description is set
       const iceBuffer: RTCIceCandidateInit[] = []
