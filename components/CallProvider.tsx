@@ -67,6 +67,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   const pcRef      = useRef<RTCPeerConnection | null>(null)
   const localRef   = useRef<MediaStream | null>(null)
   const audioRef   = useRef<HTMLAudioElement | null>(null)
+  const ringRef    = useRef<HTMLAudioElement | null>(null)
   const callIdRef  = useRef<string | null>(null)
   const sigRef     = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -77,6 +78,28 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     subsRef.current = []
     if (sigRef.current) { supabase.removeChannel(sigRef.current); sigRef.current = null }
   }
+
+  // Play ringtone while the incoming call is ringing; stop on any other state
+  useEffect(() => {
+    if (callState === 'ringing') {
+      const audio = new Audio('/incoming_ring.mp3')
+      audio.loop = true
+      audio.play().catch(() => {})
+      ringRef.current = audio
+    } else {
+      if (ringRef.current) {
+        ringRef.current.pause()
+        ringRef.current.currentTime = 0
+        ringRef.current = null
+      }
+    }
+    return () => {
+      if (ringRef.current) {
+        ringRef.current.pause()
+        ringRef.current = null
+      }
+    }
+  }, [callState])
 
   const cleanup = () => {
     localRef.current?.getTracks().forEach(t => t.stop())
