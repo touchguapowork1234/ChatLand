@@ -129,15 +129,17 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
               {otherUser.username.charAt(0).toUpperCase()}
             </div>
             <p className="text-2xl font-bold text-[#dbdee1] mb-1">{userTag(otherUser)}</p>
             <p className="text-[#949ba4] text-sm">This is the beginning of your direct message history.</p>
           </div>
+        ) : (
+          <div className="flex-1" />
         )}
 
         {messages.map((msg, i) => {

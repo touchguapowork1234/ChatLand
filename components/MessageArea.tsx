@@ -56,13 +56,15 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
         <h3 className="font-semibold text-[#dbdee1]">{channelName}</h3>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center">
+      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 bg-[#404249] rounded-full flex items-center justify-center mb-4 text-3xl font-bold text-[#949ba4]">#</div>
             <p className="text-2xl font-bold text-[#dbdee1] mb-1">Welcome to #{channelName}!</p>
             <p className="text-[#949ba4]">This is the beginning of #{channelName}.</p>
           </div>
+        ) : (
+          <div className="flex-1" />
         )}
 
         {messages.map((msg, i) => {
