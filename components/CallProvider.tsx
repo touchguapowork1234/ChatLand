@@ -64,11 +64,13 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   const [isMuted, setIsMuted]                    = useState(false)
   const [duration, setDuration]                  = useState(0)
 
-  const pcRef      = useRef<RTCPeerConnection | null>(null)
-  const localRef   = useRef<MediaStream | null>(null)
-  const audioRef   = useRef<HTMLAudioElement | null>(null)
-  const ringRef    = useRef<HTMLAudioElement | null>(null)
-  const callIdRef  = useRef<string | null>(null)
+  const pcRef             = useRef<RTCPeerConnection | null>(null)
+  const localRef          = useRef<MediaStream | null>(null)
+  const audioRef          = useRef<HTMLAudioElement | null>(null)
+  const ringRef           = useRef<HTMLAudioElement | null>(null)
+  const callIdRef         = useRef<string | null>(null)
+  const receiverIdRef     = useRef<string | null>(null)
+  const incomingCallIdRef = useRef<string | null>(null)
   const sigRef     = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const subsRef    = useRef<ReturnType<typeof supabase.channel>[]>([])
@@ -109,6 +111,8 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
     removeSubs()
     callIdRef.current = null
+    receiverIdRef.current = null
+    incomingCallIdRef.current = null
     setCallState('idle')
     setOtherUser(null)
     setCallingUserId(null)
@@ -146,10 +150,19 @@ export default function CallProvider({ userId, children }: { userId: string; chi
         const { data: caller } = await supabase
           .from('profiles').select('*').eq('id', call.caller_id).single()
         if (!caller) return
+        incomingCallIdRef.current = call.id
         setIncomingData({ call, caller: caller as Profile })
         setIncomingCallerId(call.caller_id)
         setCallState('ringing')
         setShowModal(true)
+      })
+      .on('broadcast', { event: 'call_cancelled' }, ({ payload }) => {
+        if (incomingCallIdRef.current !== payload.callId) return
+        incomingCallIdRef.current = null
+        setIncomingData(null)
+        setShowModal(false)
+        setIncomingCallerId(null)
+        setCallState('idle')
       })
       .subscribe()
 
@@ -162,6 +175,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     setCallState('calling')
     setOtherUser(receiverProfile)
     setCallingUserId(receiverId)
+    receiverIdRef.current = receiverId
 
     try {
       // Insert call record (no offer/answer in DB — all signaling via broadcast)
@@ -329,11 +343,25 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   }
 
   const endCall = async () => {
-    if (callIdRef.current) {
+    const cid = callIdRef.current
+    const rid = receiverIdRef.current
+    if (cid) {
       await supabase.from('calls')
         .update({ status: 'ended', ended_at: new Date().toISOString() })
-        .eq('id', callIdRef.current)
+        .eq('id', cid)
       sigRef.current?.send({ type: 'broadcast', event: 'end', payload: {} })
+
+      // If receiver hasn't accepted yet, they're still on their personal channel —
+      // send cancellation there since they haven't joined the signal channel yet
+      if (rid) {
+        const cancelCh = supabase.channel(`user:${rid}`)
+        cancelCh.subscribe(s => {
+          if (s === 'SUBSCRIBED') {
+            cancelCh.send({ type: 'broadcast', event: 'call_cancelled', payload: { callId: cid } })
+            setTimeout(() => supabase.removeChannel(cancelCh), 1000)
+          }
+        })
+      }
     }
     cleanup()
   }
