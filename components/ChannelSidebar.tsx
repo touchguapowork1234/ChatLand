@@ -35,6 +35,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [showNewChannel, setShowNewChannel] = useState(false)
   const [copied, setCopied]     = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
+  const [groupCtxMenu, setGroupCtxMenu] = useState<{ x: number; y: number; groupId: string; isOwner: boolean } | null>(null)
 
   // Load hidden DM IDs from localStorage
   useEffect(() => {
@@ -140,6 +141,18 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const leaveGroup = async (gId: string) => {
+    await supabase.from('group_members').delete().eq('group_id', gId).eq('user_id', profile.id)
+    setGroups(prev => prev.filter(g => g.id !== gId))
+    if (groupId === gId) router.push('/')
+  }
+
+  const deleteGroup = async (gId: string) => {
+    await supabase.from('group_chats').delete().eq('id', gId).eq('created_by', profile.id)
+    setGroups(prev => prev.filter(g => g.id !== gId))
+    if (groupId === gId) router.push('/')
+  }
+
   // ── DM sidebar (no server selected) ──
   if (!serverId) {
     const visibleDMs = dms.filter(dm => !hiddenIds.has(dm.id))
@@ -154,6 +167,16 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
             x={ctxMenu.x} y={ctxMenu.y}
             onClose={() => setCtxMenu(null)}
             items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+          />
+        )}
+        {groupCtxMenu && (
+          <ContextMenu
+            x={groupCtxMenu.x} y={groupCtxMenu.y}
+            onClose={() => setGroupCtxMenu(null)}
+            items={[
+              ...(groupCtxMenu.isOwner ? [{ label: 'Delete Group', danger: true, onClick: () => deleteGroup(groupCtxMenu.groupId) }] : []),
+              { label: 'Leave Group', danger: true, onClick: () => leaveGroup(groupCtxMenu.groupId) },
+            ]}
           />
         )}
         <div className="w-60 bg-[#2b2d31] flex flex-col shrink-0">
@@ -226,6 +249,10 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                   <button
                     key={g.id}
                     onClick={() => router.push(`/group/${g.id}`)}
+                    onContextMenu={e => {
+                      e.preventDefault()
+                      setGroupCtxMenu({ x: e.clientX, y: e.clientY, groupId: g.id, isOwner: g.created_by === profile.id })
+                    }}
                     className={clsx(
                       'w-full flex items-center gap-2 px-2 py-2 rounded transition-colors',
                       groupId === g.id
