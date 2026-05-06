@@ -84,7 +84,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   // Play ringtone only for the receiver; stop on any other state
   useEffect(() => {
     if (callState === 'ringing') {
-      const audio = new Audio('/incoming_ring.mp3')
+      const audio = new Audio('/incoming_ring_new.wav')
       audio.loop = true
       audio.play().catch(() => {})
       ringRef.current = audio
