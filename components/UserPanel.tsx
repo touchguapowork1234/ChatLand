@@ -23,8 +23,11 @@ export default function UserPanel({ profile: initialProfile }: { profile: Profil
   return (
     <>
       <div className="h-[52px] bg-[#232428] flex items-center px-2 gap-2 shrink-0">
-        <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-sm font-bold shrink-0 select-none">
-          {profile?.username?.charAt(0).toUpperCase()}
+        <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0 select-none">
+          {profile?.avatar_url
+            ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            : (profile?.display_name || profile?.username)?.charAt(0).toUpperCase()
+          }
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[#dbdee1] truncate">{userTag(profile)}</p>
