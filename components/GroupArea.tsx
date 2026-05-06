@@ -73,9 +73,11 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
         filter: `group_id=eq.${group.id}`,
       }, async payload => {
         const mem = payload.new as GroupMember
-        if (members.find(m => m.id === mem.id)) return
         const { data: profile } = await supabase.from('profiles').select('*').eq('id', mem.user_id).single()
-        setMembers(prev => [...prev, { ...mem, profiles: profile as Profile }])
+        setMembers(prev => {
+          if (prev.find(m => m.id === mem.id)) return prev
+          return [...prev, { ...mem, profiles: profile as Profile }]
+        })
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -125,7 +127,23 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
           groupId={group.id}
           currentUserId={currentUserId}
           currentMembers={members}
-          onAdded={newMembers => setMembers(prev => [...prev, ...newMembers])}
+          onAdded={async (newMembers) => {
+            setMembers(prev => {
+              const existingIds = new Set(prev.map(m => m.id))
+              return [...prev, ...newMembers.filter(m => !existingIds.has(m.id))]
+            })
+            const adder = members.find(m => m.user_id === currentUserId)
+            const adderName = adder?.profiles?.display_name || adder?.profiles?.username || 'Someone'
+            for (const nm of newMembers) {
+              const addedName = nm.profiles?.display_name || nm.profiles?.username || 'Someone'
+              await supabase.from('group_messages').insert({
+                group_id: group.id,
+                sender_id: currentUserId,
+                content: `${adderName} added ${addedName} to the group`,
+                type: 'system',
+              })
+            }
+          }}
           onClose={() => setShowAddMember(false)}
         />
       )}
