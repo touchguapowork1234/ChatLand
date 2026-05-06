@@ -6,7 +6,7 @@ import { Hash, Plus, Copy, Check, UserPlus, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { createClient } from '@/lib/supabase/client'
 import type { Channel, Profile, Server, DirectMessage } from '@/lib/types'
-import { userTag } from '@/lib/types'
+import { displayName } from '@/lib/types'
 import UserPanel from './UserPanel'
 
 type DmEntry = DirectMessage & { otherUser: Profile; lastMsg?: string }
@@ -151,7 +151,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="text-sm font-medium truncate">{userTag(dm.otherUser)}</p>
+                  <p className="text-sm font-medium truncate">{displayName(dm.otherUser)}</p>
                   {dm.lastMsg && (
                     <p className="text-xs text-[#6d6f78] truncate">{dm.lastMsg}</p>
                   )}

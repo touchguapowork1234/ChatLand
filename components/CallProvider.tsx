@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Phone, PhoneOff, Mic, MicOff, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Call, Profile } from '@/lib/types'
-import { userTag } from '@/lib/types'
+import { displayName } from '@/lib/types'
 
 type CallState = 'idle' | 'calling' | 'ringing' | 'active'
 
@@ -344,7 +344,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
                 : (incomingData.caller.display_name || incomingData.caller.username).charAt(0).toUpperCase()}
             </div>
             <p className="text-[#949ba4] text-sm mb-1">Incoming voice call</p>
-            <p className="text-xl font-bold text-[#dbdee1] mb-8">{userTag(incomingData.caller)}</p>
+            <p className="text-xl font-bold text-[#dbdee1] mb-8">{displayName(incomingData.caller)}</p>
             <div className="flex gap-6 justify-center">
               <button onClick={declineCall}
                 className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors">
@@ -369,7 +369,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
                 : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <p className="font-semibold text-[#dbdee1] text-sm truncate">{userTag(otherUser)}</p>
+              <p className="font-semibold text-[#dbdee1] text-sm truncate">{displayName(otherUser)}</p>
               <p className="text-xs text-[#949ba4]">{callState === 'calling' ? 'Calling…' : fmt(duration)}</p>
             </div>
             {callState === 'active' && (

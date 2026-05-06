@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { LogOut, Settings } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
-import { userTag } from '@/lib/types'
+import { displayName } from '@/lib/types'
 import SettingsModal from './SettingsModal'
 
 export default function UserPanel({ profile: initialProfile }: { profile: Profile }) {
@@ -30,7 +30,7 @@ export default function UserPanel({ profile: initialProfile }: { profile: Profil
           }
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-[#dbdee1] truncate">{userTag(profile)}</p>
+          <p className="text-sm font-semibold text-[#dbdee1] truncate">{displayName(profile)}</p>
           <p className="text-xs text-[#23a55a]">● Online</p>
         </div>
         <button

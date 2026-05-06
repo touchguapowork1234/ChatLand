@@ -6,7 +6,7 @@ import { MessageSquare, Phone, Check, X, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { FriendRequest, Profile } from '@/lib/types'
-import { userTag } from '@/lib/types'
+import { displayName } from '@/lib/types'
 
 type Tab = 'friends' | 'pending' | 'add'
 
@@ -173,7 +173,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                         : (profile.display_name || profile.username).charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#dbdee1] text-sm">{userTag(profile)}</p>
+                      <p className="font-semibold text-[#dbdee1] text-sm">{displayName(profile)}</p>
                       <p className="text-xs text-[#949ba4]">Online</p>
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -211,7 +211,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                           : (req.sender?.display_name || req.sender?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[#dbdee1] text-sm">{userTag(req.sender)}</p>
+                        <p className="font-semibold text-[#dbdee1] text-sm">{displayName(req.sender)}</p>
                         <p className="text-xs text-[#949ba4]">Incoming Friend Request</p>
                       </div>
                       <div className="flex gap-2">
@@ -245,7 +245,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                           : (req.receiver?.display_name || req.receiver?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-[#dbdee1] text-sm">{userTag(req.receiver)}</p>
+                        <p className="font-semibold text-[#dbdee1] text-sm">{displayName(req.receiver)}</p>
                         <p className="text-xs text-[#949ba4]">Outgoing Friend Request</p>
                       </div>
                       <button onClick={() => cancel(req.id)}

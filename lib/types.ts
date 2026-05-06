@@ -11,6 +11,10 @@ export type Profile = {
 export const userTag = (p?: Profile | null) =>
   p ? `${p.username}#${p.tag}` : ''
 
+// Prefer display_name for showing names; fall back to username
+export const displayName = (p?: Profile | null) =>
+  p ? (p.display_name || p.username) : ''
+
 export type Server = {
   id: string
   name: string

@@ -5,7 +5,7 @@ import { Phone, PhoneOff, Mic, MicOff, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { DmMessage, Profile, Call } from '@/lib/types'
-import { userTag } from '@/lib/types'
+import { displayName } from '@/lib/types'
 
 interface Props {
   dmId: string
@@ -103,7 +103,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
               : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
           </div>
-          <span className="font-semibold text-[#dbdee1]">{userTag(otherUser)}</span>
+          <span className="font-semibold text-[#dbdee1]">{displayName(otherUser)}</span>
         </div>
         {callState === 'idle' && (
           <button onClick={() => startCall(otherUser.id, otherUser)} title="Start voice call"
@@ -120,7 +120,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div className="w-1.5 h-1.5 rounded-full bg-[#f0b132] animate-ping" />
           </div>
           <span className="text-[#f0b132] text-sm font-medium flex-1">
-            Calling {userTag(otherUser)}…
+            Calling {displayName(otherUser)}…
           </span>
           <button onClick={endCall}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
@@ -133,7 +133,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
           <Phone className="w-4 h-4 text-[#23a55a] animate-bounce shrink-0" />
           <span className="text-[#23a55a] text-sm font-medium flex-1">
-            Incoming call from {userTag(otherUser)}
+            Incoming call from {displayName(otherUser)}
           </span>
           <button onClick={acceptCall}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-semibold transition-colors">
@@ -175,7 +175,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
                 : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
             </div>
-            <p className="text-2xl font-bold text-[#dbdee1] mb-1">{userTag(otherUser)}</p>
+            <p className="text-2xl font-bold text-[#dbdee1] mb-1">{displayName(otherUser)}</p>
             <p className="text-[#949ba4] text-sm">This is the beginning of your direct message history.</p>
           </div>
         ) : (
@@ -242,7 +242,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               <div className="flex-1 min-w-0">
                 {!grouped && (
                   <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className="font-semibold text-[#dbdee1] text-sm">{userTag(msg.profiles)}</span>
+                    <span className="font-semibold text-[#dbdee1] text-sm">{displayName(msg.profiles)}</span>
                     <span className="text-[11px] text-[#949ba4]">{fmtTime(msg.created_at)}</span>
                   </div>
                 )}
@@ -267,7 +267,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
             }}
             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-            placeholder={`Message ${userTag(otherUser)}`}
+            placeholder={`Message ${displayName(otherUser)}`}
             rows={1}
             style={{ resize: 'none' }}
             className="flex-1 bg-transparent text-[#dbdee1] placeholder-[#6d6f78] text-sm outline-none max-h-32 overflow-y-auto leading-relaxed py-0.5"

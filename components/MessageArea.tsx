@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Message, Profile } from '@/lib/types'
-import { userTag } from '@/lib/types'
+import { displayName } from '@/lib/types'
 import MessageInput from './MessageInput'
 
 type MessageWithProfile = Message & { profiles: Profile }
@@ -100,7 +100,7 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                 <div className="flex-1 min-w-0">
                   {!grouped && (
                     <div className="flex items-baseline gap-2 mb-0.5">
-                      <span className="font-semibold text-[#dbdee1] text-sm">{userTag(msg.profiles)}</span>
+                      <span className="font-semibold text-[#dbdee1] text-sm">{displayName(msg.profiles)}</span>
                       <span className="text-[11px] text-[#949ba4]">{fmtTime(msg.created_at)}</span>
                     </div>
                   )}
