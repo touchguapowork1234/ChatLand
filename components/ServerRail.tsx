@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { Plus, MessageSquare } from 'lucide-react'
+import { Plus, Users } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { Server } from '@/lib/types'
 import CreateServerModal from './CreateServerModal'
@@ -22,25 +22,26 @@ export default function ServerRail({ servers: initial, userId }: Props) {
   const [showJoin, setShowJoin] = useState(false)
 
   const activeId = params?.serverId as string | undefined
+  const onFriends = typeof window !== 'undefined' && window.location.pathname === '/friends'
 
   const handleAdded = (server: Server) => {
     setServers(prev => [...prev, server])
     router.push(`/${server.id}`)
   }
 
+  const iconClass = (active: boolean) =>
+    clsx(
+      'w-12 h-12 transition-all duration-150 flex items-center justify-center font-bold text-white shrink-0',
+      'rounded-[50%] hover:rounded-[16px]',
+      active ? 'bg-[#5865f2] rounded-[16px]' : 'bg-[#313338] hover:bg-[#5865f2]'
+    )
+
   return (
     <>
       <div className="w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 gap-2 overflow-y-auto shrink-0">
-        <button
-          onClick={() => router.push('/')}
-          title="Home"
-          className={clsx(
-            'w-12 h-12 transition-all duration-150 flex items-center justify-center text-white',
-            'rounded-[50%] hover:rounded-[16px]',
-            !activeId ? 'bg-[#5865f2] rounded-[16px]' : 'bg-[#313338] hover:bg-[#5865f2]'
-          )}
-        >
-          <MessageSquare className="w-5 h-5" />
+        {/* Friends */}
+        <button onClick={() => router.push('/friends')} title="Friends" className={iconClass(onFriends)}>
+          <Users className="w-5 h-5" />
         </button>
 
         <div className="w-8 h-[2px] bg-[#35373c] rounded-full shrink-0" />
@@ -50,11 +51,7 @@ export default function ServerRail({ servers: initial, userId }: Props) {
             key={server.id}
             onClick={() => router.push(`/${server.id}`)}
             title={server.name}
-            className={clsx(
-              'w-12 h-12 transition-all duration-150 flex items-center justify-center font-bold text-lg text-white shrink-0',
-              'rounded-[50%] hover:rounded-[16px]',
-              activeId === server.id ? 'bg-[#5865f2] rounded-[16px]' : 'bg-[#313338] hover:bg-[#5865f2]'
-            )}
+            className={iconClass(activeId === server.id)}
           >
             {server.name.charAt(0).toUpperCase()}
           </button>
