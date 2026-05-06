@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Send, Pencil } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Send, Pencil, CornerUpLeft, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { DmMessage, Profile, Call } from '@/lib/types'
@@ -26,19 +26,25 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const [sending, setSending]   = useState(false)
   const [editing, setEditing]       = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const [replyTo, setReplyTo]   = useState<DmMessage | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef  = useRef<HTMLTextAreaElement>(null)
 
   const startEdit = (msg: DmMessage) => { setEditing(msg.id); setEditContent(msg.content) }
   const cancelEdit = () => setEditing(null)
   const saveEdit = async (msgId: string) => {
     const trimmed = editContent.trim()
     if (!trimmed) { cancelEdit(); return }
-    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: trimmed } : m))
+    const now = new Date().toISOString()
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: trimmed, updated_at: now } : m))
     cancelEdit()
     await supabase.from('dm_messages')
-      .update({ content: trimmed })
+      .update({ content: trimmed, updated_at: now })
       .eq('id', msgId).eq('sender_id', currentUserId)
   }
+
+  const startReply = (msg: DmMessage) => { setReplyTo(msg); inputRef.current?.focus() }
+  const cancelReply = () => setReplyTo(null)
 
   const isCallingThis  = callState === 'calling'  && callingUserId  === otherUser.id
   const isRingingThis  = callState === 'ringing'  && incomingCallerId === otherUser.id
@@ -100,7 +106,14 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     if (!trimmed || sending) return
     setSending(true)
     setContent('')
-    await supabase.from('dm_messages').insert({ dm_id: dmId, sender_id: currentUserId, content: trimmed })
+    const reply = replyTo
+    setReplyTo(null)
+    await supabase.from('dm_messages').insert({
+      dm_id: dmId,
+      sender_id: currentUserId,
+      content: trimmed,
+      ...(reply ? { reply_to_id: reply.id } : {}),
+    })
     setSending(false)
   }
 
@@ -234,8 +247,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           const prevItem = timeline[i - 1]
           const prevMsg = prevItem?.type === 'message' ? prevItem.data as DmMessage : null
           const grouped = !!prevMsg && prevMsg.sender_id === msg.sender_id &&
-            item.ts - prevItem.ts < 5 * 60_000
+            item.ts - prevItem.ts < 5 * 60_000 && !msg.reply_to_id
           const isMe = msg.sender_id === currentUserId
+          const repliedMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
 
           return (
             <div key={msg.id}
@@ -254,6 +268,15 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 </div>
               )}
               <div className="flex-1 min-w-0">
+                {repliedMsg && (
+                  <div className="flex items-center gap-2 mb-1 text-xs text-[#949ba4] cursor-default">
+                    <div className="w-0.5 h-4 bg-[#4e5058] rounded-full shrink-0" />
+                    <span className="font-semibold text-[#b5bac1] truncate max-w-[80px]">
+                      {displayName(repliedMsg.profiles)}
+                    </span>
+                    <span className="truncate">{repliedMsg.content}</span>
+                  </div>
+                )}
                 {!grouped && (
                   <div className="flex items-baseline gap-2 mb-0.5">
                     <span className="font-semibold text-[#dbdee1] text-sm">{displayName(msg.profiles)}</span>
@@ -286,16 +309,31 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 ) : (
                   <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
                     {msg.content}
+                    {msg.updated_at && (
+                      <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
+                    )}
                   </p>
                 )}
               </div>
-              {isMe && editing !== msg.id && (
-                <button
-                  onClick={() => startEdit(msg)}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-0.5 p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
-                >
-                  <Pencil className="w-3.5 h-3.5" />
-                </button>
+              {editing !== msg.id && (
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0 self-start mt-0.5">
+                  <button
+                    onClick={() => startReply(msg)}
+                    className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
+                    title="Reply"
+                  >
+                    <CornerUpLeft className="w-3.5 h-3.5" />
+                  </button>
+                  {isMe && (
+                    <button
+                      onClick={() => startEdit(msg)}
+                      className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
+                      title="Edit"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )
@@ -305,8 +343,19 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
       {/* Input */}
       <div className="px-4 pb-6 pt-2 shrink-0">
-        <div className="bg-[#383a40] rounded-lg flex items-end gap-2 px-4 py-2.5">
+        {replyTo && (
+          <div className="flex items-center gap-2 px-3 py-1.5 mb-1 bg-[#2e3035] rounded-t-lg text-xs text-[#949ba4]">
+            <CornerUpLeft className="w-3 h-3 shrink-0" />
+            <span>Replying to <span className="font-semibold text-[#b5bac1]">{displayName(replyTo.profiles)}</span></span>
+            <span className="flex-1 truncate text-[#6d6f78]">{replyTo.content}</span>
+            <button onClick={cancelReply} className="p-0.5 rounded hover:text-[#dbdee1] hover:bg-[#383a40]">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+        <div className={`bg-[#383a40] flex items-end gap-2 px-4 py-2.5 ${replyTo ? 'rounded-b-lg' : 'rounded-lg'}`}>
           <textarea
+            ref={inputRef}
             value={content}
             onChange={e => {
               setContent(e.target.value)

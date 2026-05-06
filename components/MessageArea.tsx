@@ -148,6 +148,9 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                   ) : (
                     <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
                       {msg.content}
+                      {msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 5000 && (
+                        <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
+                      )}
                     </p>
                   )}
                 </div>

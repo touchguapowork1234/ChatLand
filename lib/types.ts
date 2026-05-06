@@ -65,6 +65,8 @@ export type DmMessage = {
   sender_id: string
   content: string
   created_at: string
+  updated_at: string | null
+  reply_to_id: string | null
   profiles?: Profile
 }
 
