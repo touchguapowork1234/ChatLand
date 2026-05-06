@@ -66,8 +66,14 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         filter: `dm_id=eq.${dmId}`,
       }, async payload => {
         const msg = payload.new as DmMessage
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', msg.sender_id).single()
-        setMessages(prev => [...prev, { ...msg, profiles: profile as Profile }])
+        // Skip if already added optimistically by send()
+        setMessages(prev => {
+          if (prev.find(m => m.id === msg.id)) return prev
+          supabase.from('profiles').select('*').eq('id', msg.sender_id).single().then(({ data: profile }) => {
+            setMessages(p => p.find(m => m.id === msg.id) ? p : [...p, { ...msg, profiles: profile as Profile }])
+          })
+          return prev
+        })
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -108,12 +114,18 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setContent('')
     const reply = replyTo
     setReplyTo(null)
-    await supabase.from('dm_messages').insert({
-      dm_id: dmId,
-      sender_id: currentUserId,
-      content: trimmed,
-      ...(reply ? { reply_to_id: reply.id } : {}),
-    })
+    const { data: newMsg } = await supabase.from('dm_messages')
+      .insert({
+        dm_id: dmId,
+        sender_id: currentUserId,
+        content: trimmed,
+        ...(reply ? { reply_to_id: reply.id } : {}),
+      })
+      .select('*, profiles(*)')
+      .single()
+    if (newMsg) setMessages(prev =>
+      prev.find(m => m.id === newMsg.id) ? prev : [...prev, newMsg as DmMessage]
+    )
     setSending(false)
   }
 
