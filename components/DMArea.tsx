@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneOff, Mic, MicOff, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
-import type { DmMessage, Profile } from '@/lib/types'
+import type { DmMessage, Profile, Call } from '@/lib/types'
 import { userTag } from '@/lib/types'
 
 interface Props {
@@ -12,14 +12,16 @@ interface Props {
   otherUser: Profile
   currentUserId: string
   initialMessages: DmMessage[]
+  initialCalls: Call[]
 }
 
-export default function DMArea({ dmId, otherUser, currentUserId, initialMessages }: Props) {
+export default function DMArea({ dmId, otherUser, currentUserId, initialMessages, initialCalls }: Props) {
   const supabase = createClient()
   const { callState, callingUserId, incomingCallerId, isMuted, duration,
           startCall, endCall, acceptCall, declineCall, toggleMute } = useCall()
 
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages)
+  const [calls, setCalls]       = useState<Call[]>(initialCalls)
   const [content, setContent]   = useState('')
   const [sending, setSending]   = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -28,8 +30,14 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const isRingingThis  = callState === 'ringing'  && incomingCallerId === otherUser.id
   const isActiveThis   = callState === 'active'   && (callingUserId === otherUser.id || incomingCallerId === otherUser.id)
 
-  useEffect(() => { setMessages(initialMessages) }, [dmId])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
+  // Unified sorted timeline of messages + call events
+  const timeline = useMemo(() => [
+    ...messages.map(m => ({ type: 'message' as const, data: m, ts: new Date(m.created_at).getTime() })),
+    ...calls.map(c => ({ type: 'call' as const, data: c, ts: new Date(c.created_at).getTime() })),
+  ].sort((a, b) => a.ts - b.ts), [messages, calls])
+
+  useEffect(() => { setMessages(initialMessages); setCalls(initialCalls) }, [dmId])
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [timeline.length])
 
   useEffect(() => {
     const ch = supabase.channel(`dm_${dmId}`)
@@ -44,6 +52,34 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       .subscribe()
     return () => { supabase.removeChannel(ch) }
   }, [dmId])
+
+  // Realtime call upserts (INSERT when caller, UPDATE for status changes on both sides)
+  useEffect(() => {
+    const upsert = (raw: unknown) => {
+      const call = raw as Call
+      const relevant =
+        (call.caller_id === currentUserId && call.receiver_id === otherUser.id) ||
+        (call.caller_id === otherUser.id && call.receiver_id === currentUserId)
+      if (!relevant) return
+      setCalls(prev => {
+        if (prev.find(c => c.id === call.id))
+          return prev.map(c => c.id === call.id ? call : c)
+        return [...prev, call].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+      })
+    }
+
+    const ch1 = supabase.channel(`calls_caller_${currentUserId}_${otherUser.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calls', filter: `caller_id=eq.${currentUserId}` }, p => upsert(p.new))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'calls', filter: `caller_id=eq.${currentUserId}` }, p => upsert(p.new))
+      .subscribe()
+
+    const ch2 = supabase.channel(`calls_receiver_${currentUserId}_${otherUser.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'calls', filter: `receiver_id=eq.${currentUserId}` }, p => upsert(p.new))
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'calls', filter: `receiver_id=eq.${currentUserId}` }, p => upsert(p.new))
+      .subscribe()
+
+    return () => { supabase.removeChannel(ch1); supabase.removeChannel(ch2) }
+  }, [currentUserId, otherUser.id])
 
   const send = async () => {
     const trimmed = content.trim()
@@ -128,9 +164,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         </div>
       )}
 
-      {/* Messages */}
+      {/* Timeline: messages + call events */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
-        {messages.length === 0 ? (
+        {timeline.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
               {otherUser.username.charAt(0).toUpperCase()}
@@ -142,10 +178,45 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           <div className="flex-1" />
         )}
 
-        {messages.map((msg, i) => {
-          const prev = messages[i - 1]
-          const grouped = prev && prev.sender_id === msg.sender_id &&
-            new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60_000
+        {timeline.map((item, i) => {
+          if (item.type === 'call') {
+            const call = item.data
+            const isOutgoing = call.caller_id === currentUserId
+            const dur = call.ended_at
+              ? (() => {
+                  const s = Math.round((new Date(call.ended_at).getTime() - new Date(call.created_at).getTime()) / 1000)
+                  const m = Math.floor(s / 60)
+                  return m > 0 ? `${m}m ${s % 60}s` : `${s}s`
+                })()
+              : null
+
+            const cfg = {
+              ended:   { bg: 'bg-[#383a40]', fg: 'text-[#949ba4]', icon: <Phone className="w-4 h-4" />,    sub: `Ended${dur ? ` · ${dur}` : ''}` },
+              active:  { bg: 'bg-[#23a55a]/20', fg: 'text-[#23a55a]', icon: <Phone className="w-4 h-4 animate-pulse" />, sub: 'Ongoing…' },
+              ringing: { bg: 'bg-[#f0b132]/20', fg: 'text-[#f0b132]', icon: <Phone className="w-4 h-4" />, sub: isOutgoing ? 'Calling…' : 'Incoming call' },
+              declined:{ bg: 'bg-red-500/20',   fg: 'text-red-400',   icon: <PhoneOff className="w-4 h-4" />, sub: isOutgoing ? 'Declined' : 'You declined' },
+              missed:  { bg: 'bg-red-500/20',   fg: 'text-red-400',   icon: <Phone className="w-4 h-4" />,    sub: 'Missed call' },
+            }[call.status]
+
+            return (
+              <div key={call.id} className="flex items-center gap-3 px-2 py-2 mt-3 rounded hover:bg-[#2e3035]">
+                <div className={`w-10 h-10 rounded-full ${cfg.bg} flex items-center justify-center shrink-0 ${cfg.fg}`}>
+                  {cfg.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-[#dbdee1]">{isOutgoing ? 'Outgoing' : 'Incoming'} Voice Call</p>
+                  <p className={`text-xs ${cfg.fg}`}>{cfg.sub} · {fmtTime(call.created_at)}</p>
+                </div>
+              </div>
+            )
+          }
+
+          // Message
+          const msg = item.data as DmMessage
+          const prevItem = timeline[i - 1]
+          const prevMsg = prevItem?.type === 'message' ? prevItem.data as DmMessage : null
+          const grouped = !!prevMsg && prevMsg.sender_id === msg.sender_id &&
+            item.ts - prevItem.ts < 5 * 60_000
           const isMe = msg.sender_id === currentUserId
 
           return (
