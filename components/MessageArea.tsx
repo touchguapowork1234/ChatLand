@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Message, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
@@ -17,8 +18,25 @@ interface Props {
 
 export default function MessageArea({ channelId, channelName, initialMessages, currentUserId }: Props) {
   const [messages, setMessages] = useState<MessageWithProfile[]>(initialMessages)
+  const [editing, setEditing]     = useState<string | null>(null)
+  const [editContent, setEditContent] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const supabase = createClient()
+
+  const startEdit = (msg: MessageWithProfile) => {
+    setEditing(msg.id)
+    setEditContent(msg.content)
+  }
+  const cancelEdit = () => setEditing(null)
+  const saveEdit = async (msgId: string) => {
+    const trimmed = editContent.trim()
+    if (!trimmed) { cancelEdit(); return }
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, content: trimmed } : m))
+    cancelEdit()
+    await supabase.from('messages')
+      .update({ content: trimmed, updated_at: new Date().toISOString() })
+      .eq('id', msgId).eq('user_id', currentUserId)
+  }
 
   useEffect(() => { setMessages(initialMessages) }, [channelId])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
@@ -104,10 +122,43 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                       <span className="text-[11px] text-[#949ba4]">{fmtTime(msg.created_at)}</span>
                     </div>
                   )}
-                  <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
-                    {msg.content}
-                  </p>
+                  {editing === msg.id ? (
+                    <div>
+                      <textarea
+                        value={editContent}
+                        autoFocus
+                        rows={1}
+                        style={{ resize: 'none' }}
+                        onChange={e => {
+                          setEditContent(e.target.value)
+                          e.target.style.height = 'auto'
+                          e.target.style.height = e.target.scrollHeight + 'px'
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit(msg.id) }
+                          if (e.key === 'Escape') cancelEdit()
+                        }}
+                        className="w-full bg-[#383a40] text-[#dbdee1] px-3 py-1.5 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm"
+                      />
+                      <p className="text-[10px] text-[#949ba4] mt-1">
+                        <span className="text-[#dbdee1]">esc</span> to cancel ·{' '}
+                        <span className="text-[#dbdee1]">enter</span> to save
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
+                      {msg.content}
+                    </p>
+                  )}
                 </div>
+                {msg.user_id === currentUserId && editing !== msg.id && (
+                  <button
+                    onClick={() => startEdit(msg)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-0.5 p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
             </div>
           )
