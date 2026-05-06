@@ -92,6 +92,7 @@ export type GroupMessage = {
   content: string
   created_at: string
   updated_at: string | null
+  type: 'message' | 'system'
   profiles?: Profile
 }
 

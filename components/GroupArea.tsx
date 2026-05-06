@@ -151,10 +151,31 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
 
           {messages.map((msg, i) => {
             const prev = messages[i - 1]
-            const grouped = !!prev && prev.sender_id === msg.sender_id &&
-              new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60_000
             const newDay = !prev ||
               new Date(msg.created_at).toDateString() !== new Date(prev.created_at).toDateString()
+
+            // System messages (e.g. "user left the group")
+            if (msg.type === 'system') {
+              return (
+                <div key={msg.id}>
+                  {newDay && (
+                    <div className="flex items-center gap-4 my-4">
+                      <div className="flex-1 h-px bg-[#3f4147]" />
+                      <span className="text-xs font-semibold text-[#949ba4]">{fmtDate(msg.created_at)}</span>
+                      <div className="flex-1 h-px bg-[#3f4147]" />
+                    </div>
+                  )}
+                  <div className="flex items-center justify-center my-1">
+                    <span className="text-xs text-[#6d6f78] italic px-3 py-0.5 rounded-full bg-[#2b2d31]">
+                      {msg.content}
+                    </span>
+                  </div>
+                </div>
+              )
+            }
+
+            const grouped = !!prev && prev.type !== 'system' && prev.sender_id === msg.sender_id &&
+              new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60_000
             const isMe = msg.sender_id === currentUserId
 
             return (

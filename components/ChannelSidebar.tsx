@@ -142,6 +142,13 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   }
 
   const leaveGroup = async (gId: string) => {
+    const name = profile.display_name || profile.username
+    await supabase.from('group_messages').insert({
+      group_id: gId,
+      sender_id: profile.id,
+      content: `${name} left the group`,
+      type: 'system',
+    })
     await supabase.from('group_members').delete().eq('group_id', gId).eq('user_id', profile.id)
     setGroups(prev => prev.filter(g => g.id !== gId))
     if (groupId === gId) router.push('/')
