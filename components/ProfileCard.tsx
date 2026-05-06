@@ -56,9 +56,9 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={onBackdrop}
     >
-      <div className="bg-[#232428] rounded-lg w-80 shadow-2xl overflow-hidden flex flex-col">
+      <div className="bg-[#232428] rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col">
         {/* Banner */}
-        <div className="h-20 bg-gradient-to-br from-[#5865f2] to-[#7983f5] relative shrink-0">
+        <div className="h-28 bg-gradient-to-br from-[#5865f2] to-[#7983f5] relative shrink-0">
           <button
             onClick={onClose}
             className="absolute top-2 right-2 p-1 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors"
@@ -68,9 +68,9 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Avatar */}
-        <div className="px-4 pb-0 relative shrink-0" style={{ marginTop: -36 }}>
-          <div className="w-18 h-18 rounded-full border-4 border-[#232428] bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-2xl font-bold select-none"
-            style={{ width: 72, height: 72 }}>
+        <div className="px-5 pb-0 relative shrink-0" style={{ marginTop: -48 }}>
+          <div className="rounded-full border-4 border-[#232428] bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
+            style={{ width: 96, height: 96 }}>
             {loading ? null : profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               : (profile?.display_name || profile?.username || '?').charAt(0).toUpperCase()}
@@ -78,19 +78,19 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Name block */}
-        <div className="px-4 pt-2 pb-3 shrink-0">
+        <div className="px-5 pt-3 pb-4 shrink-0">
           {loading ? (
-            <div className="h-5 w-32 bg-[#383a40] rounded animate-pulse" />
+            <div className="h-6 w-36 bg-[#383a40] rounded animate-pulse" />
           ) : (
             <>
-              <p className="text-lg font-bold text-[#dbdee1] leading-tight">{displayName(profile)}</p>
-              <p className="text-sm text-[#949ba4]">{userTag(profile)}</p>
+              <p className="text-xl font-bold text-[#dbdee1] leading-tight">{displayName(profile)}</p>
+              <p className="text-sm text-[#949ba4] mt-0.5">{userTag(profile)}</p>
             </>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-[#1e1f22] px-4 shrink-0">
+        <div className="flex border-b border-[#1e1f22] px-5 shrink-0">
           {(['overview', 'mutuals'] as Tab[]).map(t => (
             <button
               key={t}
@@ -107,7 +107,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto max-h-64 p-4">
+        <div className="flex-1 overflow-y-auto max-h-80 p-5">
           {tab === 'overview' && (
             loading ? (
               <div className="space-y-2">
