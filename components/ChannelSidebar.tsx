@@ -145,8 +145,10 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                 )}
               >
-                <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
-                  {dm.otherUser?.username.charAt(0).toUpperCase()}
+                <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
+                  {dm.otherUser?.avatar_url
+                    ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0 text-left">
                   <p className="text-sm font-medium truncate">{userTag(dm.otherUser)}</p>

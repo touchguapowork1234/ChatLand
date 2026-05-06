@@ -167,8 +167,10 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                 {friends.map(({ requestId, profile }) => (
                   <div key={requestId}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] group transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold shrink-0">
-                      {profile.username.charAt(0).toUpperCase()}
+                    <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                      {profile.avatar_url
+                        ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : (profile.display_name || profile.username).charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[#dbdee1] text-sm">{userTag(profile)}</p>
@@ -203,8 +205,10 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                   {incoming.map(req => (
                     <div key={req.id}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold shrink-0">
-                        {req.sender?.username.charAt(0).toUpperCase()}
+                      <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                        {req.sender?.avatar_url
+                          ? <img src={req.sender.avatar_url} alt="" className="w-full h-full object-cover" />
+                          : (req.sender?.display_name || req.sender?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-[#dbdee1] text-sm">{userTag(req.sender)}</p>
@@ -235,8 +239,10 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                   {outgoing.map(req => (
                     <div key={req.id}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-[#5865f2] flex items-center justify-center text-white font-bold shrink-0">
-                        {req.receiver?.username.charAt(0).toUpperCase()}
+                      <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                        {req.receiver?.avatar_url
+                          ? <img src={req.receiver.avatar_url} alt="" className="w-full h-full object-cover" />
+                          : (req.receiver?.display_name || req.receiver?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-[#dbdee1] text-sm">{userTag(req.receiver)}</p>

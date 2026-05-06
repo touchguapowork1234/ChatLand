@@ -98,8 +98,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-xs font-bold select-none">
-            {otherUser.username.charAt(0).toUpperCase()}
+          <div className="w-7 h-7 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none">
+            {otherUser.avatar_url
+              ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+              : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
           </div>
           <span className="font-semibold text-[#dbdee1]">{userTag(otherUser)}</span>
         </div>
@@ -168,8 +170,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
         {timeline.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
-              {otherUser.username.charAt(0).toUpperCase()}
+            <div className="w-16 h-16 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
+              {otherUser.avatar_url
+                ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
             </div>
             <p className="text-2xl font-bold text-[#dbdee1] mb-1">{userTag(otherUser)}</p>
             <p className="text-[#949ba4] text-sm">This is the beginning of your direct message history.</p>
@@ -223,8 +227,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div key={msg.id}
               className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
               {!grouped ? (
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
-                  {(msg.profiles?.username ?? '?').charAt(0).toUpperCase()}
+                <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
+                  {msg.profiles?.avatar_url
+                    ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                    : (msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
                 </div>
               ) : (
                 <div className="w-10 shrink-0 flex items-center justify-center">
