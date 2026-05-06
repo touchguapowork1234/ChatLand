@@ -9,6 +9,8 @@ import type { Channel, Profile, Server, DirectMessage, GroupChat } from '@/lib/t
 import { displayName } from '@/lib/types'
 import UserPanel from './UserPanel'
 import CreateGroupModal from './CreateGroupModal'
+import ContextMenu from './ContextMenu'
+import { useProfileCard } from './ProfileCardProvider'
 
 type DmEntry = DirectMessage & { otherUser: Profile; lastMsg?: string }
 
@@ -16,6 +18,8 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
+  const { openProfile } = useProfileCard()
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
 
   const serverId  = params?.serverId  as string | undefined
   const channelId = params?.channelId as string | undefined
@@ -145,6 +149,13 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
         {showCreateGroup && (
           <CreateGroupModal currentUserId={profile.id} onClose={() => setShowCreateGroup(false)} />
         )}
+        {ctxMenu && (
+          <ContextMenu
+            x={ctxMenu.x} y={ctxMenu.y}
+            onClose={() => setCtxMenu(null)}
+            items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+          />
+        )}
         <div className="w-60 bg-[#2b2d31] flex flex-col shrink-0">
           <div className="p-3 border-b border-[#1e1f22] flex items-center gap-2">
             <button
@@ -169,7 +180,8 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
               <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide">Direct Messages</p>
             </div>
             {visibleDMs.map(dm => (
-              <div key={dm.id} className="group relative">
+              <div key={dm.id} className="group relative"
+                onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, userId: dm.otherUser?.id }) }}>
                 <button
                   onClick={() => router.push(`/dm/${dm.id}`)}
                   className={clsx(

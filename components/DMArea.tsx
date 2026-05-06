@@ -6,6 +6,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { DmMessage, Profile, Call } from '@/lib/types'
 import { displayName } from '@/lib/types'
+import ContextMenu from './ContextMenu'
+import { useProfileCard } from './ProfileCardProvider'
 
 interface Props {
   dmId: string
@@ -19,6 +21,8 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const supabase = createClient()
   const { callState, callingUserId, incomingCallerId, isMuted, duration,
           startCall, endCall, acceptCall, declineCall, toggleMute } = useCall()
+  const { openProfile } = useProfileCard()
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
 
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages)
   const [calls, setCalls]       = useState<Call[]>(initialCalls)
@@ -132,12 +136,25 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
+  const onCtx = (e: React.MouseEvent, userId: string) => {
+    e.preventDefault()
+    setCtxMenu({ x: e.clientX, y: e.clientY, userId })
+  }
+
   return (
     <div className="flex flex-col h-full">
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x} y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+        />
+      )}
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none">
+        <div className="flex items-center gap-2"
+          onContextMenu={e => onCtx(e, otherUser.id)}>
+          <div className="w-7 h-7 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none cursor-pointer">
             {otherUser.avatar_url
               ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
               : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
@@ -267,7 +284,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div key={msg.id}
               className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
               {!grouped ? (
-                <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
+                <div
+                  onContextMenu={e => onCtx(e, msg.sender_id)}
+                  className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
                   {msg.profiles?.avatar_url
                     ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                     : (msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}

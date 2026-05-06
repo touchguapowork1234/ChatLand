@@ -7,6 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { FriendRequest, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
+import ContextMenu from './ContextMenu'
+import { useProfileCard } from './ProfileCardProvider'
 
 type Tab = 'friends' | 'pending' | 'add'
 
@@ -20,6 +22,8 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
   const router = useRouter()
   const { startCall } = useCall()
 
+  const { openProfile } = useProfileCard()
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
   const [tab, setTab] = useState<Tab>('friends')
   const [friends, setFriends] = useState<Friend[]>([])
   const [incoming, setIncoming] = useState<FriendRequest[]>([])
@@ -128,7 +132,14 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
   ]
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" onContextMenu={e => e.preventDefault()}>
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x} y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+        />
+      )}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-[#1e1f22] shrink-0 shadow-sm">
         <UserPlus className="w-5 h-5 text-[#dbdee1]" />
         <span className="font-semibold text-[#dbdee1]">Friends</span>
@@ -166,6 +177,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                 </p>
                 {friends.map(({ requestId, profile }) => (
                   <div key={requestId}
+                    onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, userId: profile.id }) }}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] group transition-colors">
                     <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                       {profile.avatar_url
@@ -204,6 +216,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                 <div className="space-y-1">
                   {incoming.map(req => (
                     <div key={req.id}
+                      onContextMenu={e => { e.preventDefault(); req.sender?.id && setCtxMenu({ x: e.clientX, y: e.clientY, userId: req.sender.id }) }}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
                       <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                         {req.sender?.avatar_url

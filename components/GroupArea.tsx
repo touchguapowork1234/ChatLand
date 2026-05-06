@@ -5,6 +5,8 @@ import { Users, Pencil, Send } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { GroupChat, GroupMember, GroupMessage, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
+import ContextMenu from './ContextMenu'
+import { useProfileCard } from './ProfileCardProvider'
 
 interface Props {
   group: GroupChat
@@ -15,6 +17,7 @@ interface Props {
 
 export default function GroupArea({ group, initialMessages, initialMembers, currentUserId }: Props) {
   const supabase = createClient()
+  const { openProfile } = useProfileCard()
   const [messages, setMessages] = useState<GroupMessage[]>(initialMessages)
   const [members, setMembers]   = useState<GroupMember[]>(initialMembers)
   const [content, setContent]   = useState('')
@@ -22,6 +25,7 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
   const [editing, setEditing]       = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
   const [showMembers, setShowMembers] = useState(false)
+  const [ctxMenu, setCtxMenu]   = useState<{ x: number; y: number; userId: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const startEdit = (msg: GroupMessage) => { setEditing(msg.id); setEditContent(msg.content) }
@@ -100,8 +104,20 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
     return date.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })
   }
 
+  const onCtx = (e: React.MouseEvent, userId: string) => {
+    e.preventDefault()
+    setCtxMenu({ x: e.clientX, y: e.clientY, userId })
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      {ctxMenu && (
+        <ContextMenu
+          x={ctxMenu.x} y={ctxMenu.y}
+          onClose={() => setCtxMenu(null)}
+          items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+        />
+      )}
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
         <div className="flex items-center gap-2">
@@ -152,7 +168,9 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
                 )}
                 <div className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
                   {!grouped ? (
-                    <div className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
+                    <div
+                      onContextMenu={e => onCtx(e, msg.sender_id)}
+                      className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
                       {msg.profiles?.avatar_url
                         ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                         : (msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
@@ -226,7 +244,9 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
             </div>
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               {members.map(m => (
-                <div key={m.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c]">
+                <div key={m.id}
+                  onContextMenu={e => onCtx(e, m.user_id)}
+                  className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer">
                   <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
                     {m.profiles?.avatar_url
                       ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
