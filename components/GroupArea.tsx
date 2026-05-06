@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Users, Pencil, Send } from 'lucide-react'
+import { Users, Pencil, Send, UserPlus } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { GroupChat, GroupMember, GroupMessage, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
+import AddGroupMemberModal from './AddGroupMemberModal'
 
 interface Props {
   group: GroupChat
@@ -25,6 +26,7 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
   const [editing, setEditing]       = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
   const [showMembers, setShowMembers] = useState(false)
+  const [showAddMember, setShowAddMember] = useState(false)
   const [ctxMenu, setCtxMenu]   = useState<{ x: number; y: number; userId: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -116,6 +118,15 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
           x={ctxMenu.x} y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
           items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+        />
+      )}
+      {showAddMember && (
+        <AddGroupMemberModal
+          groupId={group.id}
+          currentUserId={currentUserId}
+          currentMembers={members}
+          onAdded={newMembers => setMembers(prev => [...prev, ...newMembers])}
+          onClose={() => setShowAddMember(false)}
         />
       )}
       {/* Header */}
@@ -260,8 +271,17 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
         {/* Members panel */}
         {showMembers && (
           <div className="w-52 bg-[#2b2d31] border-l border-[#1e1f22] flex flex-col shrink-0">
-            <div className="px-4 pt-4 pb-2">
-              <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide">Members — {members.length}</p>
+            <div className="px-4 pt-4 pb-2 flex items-center">
+              <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide flex-1">Members — {members.length}</p>
+              {members.length < 10 && (
+                <button
+                  onClick={() => setShowAddMember(true)}
+                  title="Add members"
+                  className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40] transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto px-2 pb-4">
               {members.map(m => (
