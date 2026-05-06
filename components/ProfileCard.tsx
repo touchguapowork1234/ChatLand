@@ -26,26 +26,14 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
       setLoading(true)
       setTab('overview')
 
-      const [{ data: prof }, { data: myFriends }, { data: theirFriends }] = await Promise.all([
+      const [{ data: prof }, { data: mutualRows }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId).single(),
-        supabase.from('friend_requests').select('sender_id, receiver_id').eq('status', 'accepted')
-          .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`),
-        supabase.from('friend_requests').select('sender_id, receiver_id').eq('status', 'accepted')
-          .or(`sender_id.eq.${userId},receiver_id.eq.${userId}`),
+        supabase.rpc('get_mutual_friends', { user_a: currentUserId, user_b: userId }),
       ])
 
       setProfile(prof)
 
-      // Compute mutual friend IDs
-      const myIds = new Set(
-        (myFriends ?? [])
-          .map(r => r.sender_id === currentUserId ? r.receiver_id : r.sender_id)
-          .filter(id => id !== userId)
-      )
-      const mutualIds = (theirFriends ?? [])
-        .map(r => r.sender_id === userId ? r.receiver_id : r.sender_id)
-        .filter(id => id !== currentUserId && myIds.has(id))
-
+      const mutualIds = (mutualRows ?? []).map((r: { friend_id: string }) => r.friend_id)
       if (mutualIds.length > 0) {
         const { data: mutProfiles } = await supabase.from('profiles').select('*').in('id', mutualIds)
         setMutuals(mutProfiles ?? [])
