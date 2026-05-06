@@ -63,21 +63,23 @@ export default function CreateGroupModal({ currentUserId, onClose }: { currentUs
     if (selected.size === 0) { setError('Select at least one friend'); return }
     setCreating(true)
 
-    const { data: group, error: gcErr } = await supabase
-      .from('group_chats')
-      .insert({ name, created_by: currentUserId })
-      .select()
-      .single()
+    // Generate ID client-side so we can add members before doing any SELECT
+    // (the gc_select RLS policy requires membership, which doesn't exist yet at insert time)
+    const groupId = crypto.randomUUID()
 
-    if (gcErr || !group) { setError('Failed to create group'); setCreating(false); return }
+    const { error: gcErr } = await supabase
+      .from('group_chats')
+      .insert({ id: groupId, name, created_by: currentUserId })
+
+    if (gcErr) { setError('Failed to create group'); setCreating(false); return }
 
     const members = [currentUserId, ...Array.from(selected)].map(uid => ({
-      group_id: group.id,
+      group_id: groupId,
       user_id: uid,
     }))
     await supabase.from('group_members').insert(members)
 
-    router.push(`/group/${group.id}`)
+    router.push(`/group/${groupId}`)
     onClose()
   }
 
