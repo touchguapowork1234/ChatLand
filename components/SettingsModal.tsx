@@ -847,16 +847,17 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                             }`}
                           >
                             {/* Preview: avatar circle with decoration overlaid */}
-                            <div className="relative" style={{ width: 48, height: 48 }}>
-                              <div className="w-full h-full rounded-full bg-[#5865f2]" />
-                              <img
-                                src={dec.src}
-                                alt={dec.label}
-                                draggable={false}
-                                className="absolute pointer-events-none select-none"
-                                style={{ width: 48, height: 48, top: 0, left: 0 }}
-                              />
-                            </div>
+                            {(() => {
+                              const s = 48, d = Math.round(s * 288/240), o = -Math.round((d-s)/2)
+                              return (
+                                <div className="relative" style={{ width: s, height: s }}>
+                                  <div className="w-full h-full rounded-full bg-[#5865f2]" />
+                                  <img src={dec.src} alt={dec.label} draggable={false}
+                                    className="absolute pointer-events-none select-none"
+                                    style={{ width: d, height: d, top: o, left: o }} />
+                                </div>
+                              )
+                            })()}
                             <p className={`text-xs font-medium text-center leading-tight ${decoration === dec.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{dec.label}</p>
                           </button>
                         ))}

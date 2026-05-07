@@ -9,8 +9,15 @@ interface Props {
   onClick?: () => void
 }
 
+// Whiskers in the source image are at x=24 and x=264 (out of 288px) at y=144.
+// Solving for D so whiskers land exactly on the left/right circle edges gives D = size * 288/240 = size * 1.2.
+// The centering offset follows: offset = -(D - size) / 2
+const SCALE = 288 / 240  // ≈ 1.2
+
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
-  const dec = decorationById(decoration)
+  const dec    = decorationById(decoration)
+  const decSize = Math.round(size * SCALE)
+  const offset  = -Math.round((decSize - size) / 2)
 
   return (
     <div
@@ -28,7 +35,7 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           : displayInitial}
       </div>
 
-      {/* Decoration overlay — same size as avatar, no scaling, sits on border */}
+      {/* Decoration — scaled so whiskers land exactly on the circle border */}
       {dec && (
         <img
           src={dec.src}
@@ -36,10 +43,10 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           draggable={false}
           className="absolute pointer-events-none select-none"
           style={{
-            width:  size,
-            height: size,
-            top:    0,
-            left:   0,
+            width:  decSize,
+            height: decSize,
+            top:    offset,
+            left:   offset,
             zIndex: 10,
           }}
         />
