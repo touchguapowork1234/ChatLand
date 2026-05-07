@@ -98,7 +98,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Name block */}
-        <div className={`px-5 pt-3 pb-4 shrink-0 ${cardColorActive ? 'bg-black/20' : ''}`}>
+        <div className="px-5 pt-3 pb-4 shrink-0">
           {loading ? (
             <div className="h-6 w-36 bg-[#383a40] rounded animate-pulse" />
           ) : (
@@ -120,7 +120,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className={`flex border-b px-5 shrink-0 ${cardColorActive ? 'border-white/20 bg-black/20' : 'border-[#1e1f22]'}`}>
+        <div className={`flex border-b px-5 shrink-0 ${cardColorActive ? 'border-white/20' : 'border-[#1e1f22]'}`}>
           {(['overview', 'mutuals'] as Tab[]).map(t => (
             <button
               key={t}
