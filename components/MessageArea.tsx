@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Message, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import MessageInput from './MessageInput'
+import { renderContent } from '@/lib/renderContent'
 
 type MessageWithProfile = Message & { profiles: Profile }
 
@@ -147,7 +148,7 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                     </div>
                   ) : (
                     <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
-                      {msg.content}
+                      {renderContent(msg.content)}
                       {msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 5000 && (
                         <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
                       )}

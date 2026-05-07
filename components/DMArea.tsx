@@ -9,6 +9,7 @@ import { displayName } from '@/lib/types'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
 import FileAttachment from './FileAttachment'
+import { renderContent } from '@/lib/renderContent'
 
 interface Props {
   dmId: string
@@ -369,23 +370,8 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     }, 0)
   }
 
-  const renderMentions = (text: string) => {
-    if (!text.includes('@')) return text
-    const parts = text.split(/(@\w+)/g)
-    return parts.map((part, idx) => {
-      if (/^@\w+$/.test(part)) {
-        const username = part.slice(1)
-        if (!validMentionUsernames.has(username)) return part
-        const isMe = !!currentUserUsername && username === currentUserUsername
-        return (
-          <span key={idx} className={`font-medium rounded-sm px-0.5 ${isMe ? 'text-[#f0b132] bg-[#f0b132]/10' : 'text-[#5865f2] bg-[#5865f2]/10'}`}>
-            {part}
-          </span>
-        )
-      }
-      return part
-    })
-  }
+  const renderMentions = (text: string) =>
+    renderContent(text, validMentionUsernames, currentUserUsername ?? undefined)
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
