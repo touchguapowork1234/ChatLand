@@ -9,19 +9,11 @@ interface Props {
   onClick?: () => void
 }
 
-// The decoration PNG (288×288) has opaque pixels starting at x=5 and ending at x=282.
-// To land those tips exactly on the left/right circle edges:
-//   decSize = size * 288 / 277
-//   offset  = -5 * size / 277
-const IMG_W   = 288
-const TIP_L   = 5    // leftmost opaque pixel
-const TIP_R   = 282  // rightmost opaque pixel
-const CONTENT = TIP_R - TIP_L  // 277
+const DEC_SIZE = 288  // always render decoration at its native resolution
 
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
-  const dec     = decorationById(decoration)
-  const decSize = size * IMG_W / CONTENT         // ≈ 1.04 × size
-  const offset  = -(TIP_L * size / CONTENT)     // ≈ -0.018 × size
+  const dec    = decorationById(decoration)
+  const offset = -((DEC_SIZE - size) / 2)
 
   return (
     <div
@@ -39,7 +31,6 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           : displayInitial}
       </div>
 
-      {/* Decoration — scaled so whiskers land exactly on the circle border */}
       {dec && (
         <img
           src={dec.src}
@@ -47,8 +38,8 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           draggable={false}
           className="absolute pointer-events-none select-none"
           style={{
-            width:  decSize,
-            height: decSize,
+            width:  DEC_SIZE,
+            height: DEC_SIZE,
             top:    offset,
             left:   offset,
             zIndex: 10,
