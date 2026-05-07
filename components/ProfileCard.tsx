@@ -50,16 +50,17 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     if (e.target === e.currentTarget) onClose()
   }
 
-  const cardPrimary   = (profile?.card_enabled !== false && profile?.card_primary)   ? profile.card_primary   : '#5865f2'
-  const cardSecondary = (profile?.card_enabled !== false && profile?.card_secondary) ? profile.card_secondary : '#7983f5'
+  const cardColorActive = profile?.card_enabled === true && !!(profile?.card_primary || profile?.card_secondary)
+  const cardPrimary   = cardColorActive ? profile!.card_primary!  : '#5865f2'
+  const cardSecondary = cardColorActive ? (profile!.card_secondary ?? profile!.card_primary!) : '#7983f5'
 
   const bannerStyle: React.CSSProperties = profile?.banner_url
     ? {}
     : { background: `linear-gradient(135deg, ${cardPrimary}, ${cardSecondary})` }
 
-  const cardBodyStyle: React.CSSProperties = {
-    background: `linear-gradient(160deg, ${cardPrimary}28 0%, ${cardSecondary}10 40%, #232428 70%)`,
-  }
+  const cardBodyStyle: React.CSSProperties = cardColorActive
+    ? { background: `linear-gradient(160deg, ${cardPrimary}, ${cardSecondary})` }
+    : { background: `linear-gradient(160deg, ${cardPrimary}28 0%, ${cardSecondary}10 40%, #232428 70%)` }
 
   return (
     <div
@@ -97,7 +98,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Name block */}
-        <div className="px-5 pt-3 pb-4 shrink-0">
+        <div className={`px-5 pt-3 pb-4 shrink-0 ${cardColorActive ? 'bg-black/20' : ''}`}>
           {loading ? (
             <div className="h-6 w-36 bg-[#383a40] rounded animate-pulse" />
           ) : (
@@ -119,7 +120,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-[#1e1f22] px-5 shrink-0">
+        <div className={`flex border-b px-5 shrink-0 ${cardColorActive ? 'border-white/20 bg-black/20' : 'border-[#1e1f22]'}`}>
           {(['overview', 'mutuals'] as Tab[]).map(t => (
             <button
               key={t}
@@ -136,7 +137,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Tab content */}
-        <div className="flex-1 overflow-y-auto max-h-80 p-5">
+        <div className={`flex-1 overflow-y-auto max-h-80 p-5 ${cardColorActive ? 'bg-black/20' : ''}`}>
           {tab === 'overview' && (
             loading ? (
               <div className="space-y-2">
