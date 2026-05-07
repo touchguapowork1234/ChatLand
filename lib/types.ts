@@ -22,6 +22,7 @@ export type Profile = {
   anim_hover_glow?: boolean
   anim_message_entrance?: boolean
   anim_smooth_transitions?: boolean
+  profile_tilt_enabled?: boolean
 }
 
 export const userTag = (p?: Profile | null) =>

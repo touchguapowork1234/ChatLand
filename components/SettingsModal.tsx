@@ -74,6 +74,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     setThemeEnabled(enabled)
   }
 
+  // Public profile
+  const [profileTiltEnabled, setProfileTiltEnabled] = useState(profile.profile_tilt_enabled ?? false)
+
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
   const [animProfileFade,       setAnimProfileFade]       = useState(profile.anim_profile_fade    ?? true)
@@ -398,6 +401,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       theme_secondary:       themeSecondary,
       card_primary:          cardPrimary,
       card_secondary:        cardSecondary,
+      profile_tilt_enabled:  profileTiltEnabled,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -800,6 +804,28 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                         </div>
                         <div className="flex-1 h-8 rounded-md mt-6 self-end"
                           style={{ background: `linear-gradient(135deg, ${cardPrimary}, ${cardSecondary})` }} />
+                      </div>
+                    </div>
+
+                    {/* Public Profile */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Public Profile</p>
+                      <div className="bg-[#1e1f22] rounded-lg p-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm text-[#dbdee1] font-medium">Profile Tilt</p>
+                            <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">
+                              Everyone who views your profile sees the 3D tilt effect when hovering
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setProfileTiltEnabled(v => !v)}
+                            className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${profileTiltEnabled ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                          >
+                            <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${profileTiltEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                          </button>
+                        </div>
                       </div>
                     </div>
 
