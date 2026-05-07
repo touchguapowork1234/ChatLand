@@ -22,6 +22,9 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const { dms, groups, hiddenIds, saveHidden, unreadCounts, clearUnread, setGroups } = useUnread()
 
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
+  const [nicknames, setNicknames]         = useState<Map<string, string>>(new Map())
+  const [nicknameModal, setNicknameModal] = useState<{ friendId: string; friendName: string } | null>(null)
+  const [nicknameInput, setNicknameInput] = useState('')
 
   const serverId  = params?.serverId  as string | undefined
   const channelId = params?.channelId as string | undefined
@@ -43,7 +46,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [cropFile, setCropFile] = useState<{ file: File; groupId: string } | null>(null)
   const groupIconInputRef = useRef<HTMLInputElement>(null)
 
-  // Load blocked user IDs + friend IDs
+  // Load blocked user IDs + friend IDs + nicknames
   useEffect(() => {
     if (serverId) return
     supabase.from('blocks').select('blocked_id').eq('blocker_id', profile.id)
@@ -54,6 +57,12 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
       .then(({ data }) => setFriendIds(new Set((data ?? []).map((r: { sender_id: string; receiver_id: string }) =>
         r.sender_id === profile.id ? r.receiver_id : r.sender_id
       ))))
+    supabase.from('friend_nicknames').select('friend_id, nickname').eq('user_id', profile.id)
+      .then(({ data }) => {
+        const map = new Map<string, string>()
+        ;(data ?? []).forEach((n: { friend_id: string; nickname: string }) => map.set(n.friend_id, n.nickname))
+        setNicknames(map)
+      })
   }, [profile.id, serverId])
 
   const blockDMUser = async (userId: string) => {
@@ -69,6 +78,33 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const removeDMFriend = async (userId: string) => {
     await supabase.rpc('remove_friend', { friend_user_id: userId })
     setFriendIds(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
+
+  const openNicknameModal = (friendId: string, friendName: string) => {
+    setNicknameInput(nicknames.get(friendId) ?? '')
+    setNicknameModal({ friendId, friendName })
+  }
+
+  const saveNickname = async () => {
+    if (!nicknameModal) return
+    const trimmed = nicknameInput.trim()
+    if (!trimmed) {
+      await supabase.from('friend_nicknames').delete().eq('user_id', profile.id).eq('friend_id', nicknameModal.friendId)
+      setNicknames(prev => { const m = new Map(prev); m.delete(nicknameModal.friendId); return m })
+    } else {
+      await supabase.from('friend_nicknames').upsert(
+        { user_id: profile.id, friend_id: nicknameModal.friendId, nickname: trimmed },
+        { onConflict: 'user_id,friend_id' }
+      )
+      setNicknames(prev => new Map(prev).set(nicknameModal.friendId, trimmed))
+    }
+    setNicknameModal(null)
+  }
+
+  const removeNickname = async (friendId: string) => {
+    await supabase.from('friend_nicknames').delete().eq('user_id', profile.id).eq('friend_id', friendId)
+    setNicknames(prev => { const m = new Map(prev); m.delete(friendId); return m })
+    setNicknameModal(null)
   }
 
   const hideDM = (id: string, e: React.MouseEvent) => {
@@ -187,9 +223,16 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
             onClose={() => setCtxMenu(null)}
             items={[
               { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
-              ...(friendIds.has(ctxMenu.userId)
-                ? [{ label: 'Remove Friend', danger: true, onClick: () => removeDMFriend(ctxMenu.userId) }]
-                : []),
+              ...(friendIds.has(ctxMenu.userId) ? [
+                {
+                  label: nicknames.has(ctxMenu.userId) ? 'Edit Nickname' : 'Add Nickname',
+                  onClick: () => {
+                    const dm = dms.find(d => d.otherUser?.id === ctxMenu.userId)
+                    openNicknameModal(ctxMenu.userId, displayName(dm?.otherUser))
+                  },
+                },
+                { label: 'Remove Friend', danger: true, onClick: () => removeDMFriend(ctxMenu.userId) },
+              ] : []),
               blockedIds.has(ctxMenu.userId)
                 ? { label: 'Unblock', onClick: () => unblockDMUser(ctxMenu.userId) }
                 : { label: 'Block', danger: true, onClick: () => blockDMUser(ctxMenu.userId) },
@@ -259,6 +302,35 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
             </div>
           </div>
         )}
+        {nicknameModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={e => { if (e.target === e.currentTarget) setNicknameModal(null) }}>
+            <div className="bg-[#2b2d31] rounded-xl shadow-2xl w-[360px] p-6">
+              <h2 className="text-lg font-bold text-[#dbdee1] mb-1">
+                {nicknames.has(nicknameModal.friendId) ? 'Edit Nickname' : 'Add Nickname'}
+              </h2>
+              <p className="text-sm text-[#949ba4] mb-4">for <span className="text-[#dbdee1]">{nicknameModal.friendName}</span></p>
+              <input
+                autoFocus
+                type="text"
+                value={nicknameInput}
+                onChange={e => setNicknameInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveNickname(); if (e.key === 'Escape') setNicknameModal(null) }}
+                placeholder="Enter a nickname…"
+                maxLength={32}
+                className="w-full bg-[#1e1f22] text-[#dbdee1] rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5865f2] mb-4"
+              />
+              <div className="flex items-center gap-2 justify-end">
+                {nicknames.has(nicknameModal.friendId) && (
+                  <button onClick={() => removeNickname(nicknameModal.friendId)} className="text-sm text-red-400 hover:text-red-300 mr-auto transition-colors">
+                    Remove Nickname
+                  </button>
+                )}
+                <button onClick={() => setNicknameModal(null)} className="px-4 py-1.5 rounded-lg text-sm text-[#949ba4] hover:text-[#dbdee1] transition-colors">Cancel</button>
+                <button onClick={saveNickname} className="px-4 py-1.5 rounded-lg text-sm bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium transition-colors">Save</button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="w-60 flex flex-col shrink-0" style={{ background: 'linear-gradient(var(--theme-overlay-sidebar),var(--theme-overlay-sidebar)),linear-gradient(to bottom,var(--theme-primary),var(--theme-secondary))' }}>
           <div className="p-3 border-b border-[#1e1f22] flex items-center gap-2">
             <button
@@ -307,7 +379,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium truncate">{displayName(dm.otherUser)}</p>
+                    <p className="text-sm font-medium truncate">{(dm.otherUser?.id && nicknames.get(dm.otherUser.id)) ?? displayName(dm.otherUser)}</p>
                     {dm.lastMsg && (
                       <p className="text-xs text-[#6d6f78] truncate">{dm.lastMsg}</p>
                     )}
