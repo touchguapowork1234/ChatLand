@@ -76,6 +76,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   // Public profile
   const [profileTiltEnabled, setProfileTiltEnabled] = useState(profile.profile_tilt_enabled ?? false)
+  const [bgAnimEnabled, setBgAnimEnabled] = useState(!!(profile.profile_bg_animation))
+  const [bgAnimType, setBgAnimType]       = useState<string>(profile.profile_bg_animation ?? 'shooting_stars')
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -402,6 +404,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       card_primary:          cardPrimary,
       card_secondary:        cardSecondary,
       profile_tilt_enabled:  profileTiltEnabled,
+      profile_bg_animation:  bgAnimEnabled ? bgAnimType : null,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -810,7 +813,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                     {/* Public Profile */}
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Public Profile</p>
-                      <div className="bg-[#1e1f22] rounded-lg p-4">
+                      <div className="bg-[#1e1f22] rounded-lg p-4 space-y-4">
+                        {/* Profile Tilt */}
                         <div className="flex items-center justify-between gap-4">
                           <div className="min-w-0">
                             <p className="text-sm text-[#dbdee1] font-medium">Profile Tilt</p>
@@ -825,6 +829,53 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                           >
                             <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${profileTiltEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
                           </button>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="border-t border-[#2b2d31]" />
+
+                        {/* Background Animations */}
+                        <div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm text-[#dbdee1] font-medium">Background Animations</p>
+                              <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">
+                                Plays an animation behind your profile card when others view it
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setBgAnimEnabled(v => !v)}
+                              className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${bgAnimEnabled ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                            >
+                              <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${bgAnimEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+
+                          {bgAnimEnabled && (
+                            <div className="mt-3 grid grid-cols-2 gap-2">
+                              {([
+                                { id: 'shooting_stars', label: 'Shooting Stars', desc: 'Star field with a glowing moon and shooting streaks' },
+                                { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
+                              ] as { id: string; label: string; desc: string }[]).map(opt => (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setBgAnimType(opt.id)}
+                                  className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                                    bgAnimType === opt.id
+                                      ? 'border-[#f0b132] bg-[#f0b132]/10'
+                                      : 'border-[#3f4147] bg-[#232428] hover:border-[#5865f2]'
+                                  }`}
+                                >
+                                  <p className={`text-sm font-semibold ${bgAnimType === opt.id ? 'text-[#f0b132]' : 'text-[#dbdee1]'}`}>
+                                    {opt.label}
+                                  </p>
+                                  <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">{opt.desc}</p>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

@@ -5,6 +5,7 @@ import { X, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { displayName, userTag } from '@/lib/types'
+import { ShootingStarsAnimation, SnowAnimation } from './ProfileBgAnimation'
 
 type Tab = 'overview' | 'mutuals'
 
@@ -91,9 +92,12 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-hidden"
       onMouseDown={onBackdrop}
     >
+      {/* Background animation layer — behind everything */}
+      {profile?.profile_bg_animation === 'shooting_stars' && <ShootingStarsAnimation />}
+      {profile?.profile_bg_animation === 'snow' && <SnowAnimation />}
       {/* Perspective wrapper — captures mouse for tilt */}
       <div
         ref={wrapperRef}
