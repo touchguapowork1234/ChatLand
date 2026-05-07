@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Users, Pencil, Send, UserPlus, CornerUpLeft, X, Paperclip, Upload, Trash2, Loader2 } from 'lucide-react'
+import { Users, Pencil, Send, UserPlus, CornerUpLeft, X, Paperclip, Upload, Trash2, Loader2, Phone } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { GroupChat, GroupMember, GroupMessage, Profile } from '@/lib/types'
+import type { GroupChat, GroupMember, GroupMessage, GroupCall, GroupCallParticipant, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
 import AddGroupMemberModal from './AddGroupMemberModal'
 import FileAttachment from './FileAttachment'
+import { useGroupCall } from './GroupCallProvider'
 
 interface Props {
   group: GroupChat
@@ -22,9 +23,12 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024
 export default function GroupArea({ group: initialGroup, initialMessages, initialMembers, currentUserId }: Props) {
   const supabase = createClient()
   const { openProfile } = useProfileCard()
+  const { gcGroupId, startGroupCall, joinGroupCall, leaveGroupCall } = useGroupCall()
   const [group, setGroup]       = useState(initialGroup)
   const [messages, setMessages] = useState<GroupMessage[]>(initialMessages)
   const [members, setMembers]   = useState<GroupMember[]>(initialMembers)
+  const [activeCall, setActiveCall]           = useState<GroupCall | null>(null)
+  const [callParticipants, setCallParticipants] = useState<GroupCallParticipant[]>([])
   const [content, setContent]   = useState('')
   const [sending, setSending]   = useState(false)
   const [editing, setEditing]       = useState<string | null>(null)
@@ -211,6 +215,81 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
     return () => { supabase.removeChannel(ch) }
   }, [group.id])
 
+  // Load active call on mount
+  useEffect(() => {
+    supabase
+      .from('group_calls')
+      .select('*')
+      .eq('group_id', group.id)
+      .eq('status', 'active')
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setActiveCall(data as GroupCall)
+          supabase
+            .from('group_call_participants')
+            .select('*, profiles(*)')
+            .eq('call_id', data.id)
+            .then(({ data: parts }) => setCallParticipants((parts ?? []) as GroupCallParticipant[]))
+        }
+      })
+  }, [group.id])
+
+  // Realtime: group_calls INSERT/UPDATE for this group
+  useEffect(() => {
+    const ch = supabase
+      .channel(`group_calls_${group.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'group_calls',
+        filter: `group_id=eq.${group.id}`,
+      }, (payload) => {
+        const call = payload.new as GroupCall
+        if (call.status === 'active') {
+          setActiveCall(call)
+          setCallParticipants([])
+        }
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'group_calls',
+        filter: `group_id=eq.${group.id}`,
+      }, (payload) => {
+        const call = payload.new as GroupCall
+        if (call.status === 'ended') {
+          setActiveCall(null)
+          setCallParticipants([])
+        }
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [group.id])
+
+  // Realtime: group_call_participants INSERT/DELETE for active call
+  useEffect(() => {
+    if (!activeCall) return
+    const ch = supabase
+      .channel(`group_call_participants_${activeCall.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'group_call_participants',
+        filter: `call_id=eq.${activeCall.id}`,
+      }, async (payload) => {
+        const part = payload.new as GroupCallParticipant
+        const { data: prof } = await supabase.from('profiles').select('*').eq('id', part.user_id).single()
+        setCallParticipants(prev => {
+          if (prev.find(p => p.id === part.id)) return prev
+          return [...prev, { ...part, profiles: prof as Profile }]
+        })
+      })
+      .on('postgres_changes', {
+        event: 'DELETE', schema: 'public', table: 'group_call_participants',
+        filter: `call_id=eq.${activeCall.id}`,
+      }, (payload) => {
+        const part = payload.old as GroupCallParticipant
+        setCallParticipants(prev => prev.filter(p => p.id !== part.id))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [activeCall?.id])
+
   useEffect(() => {
     supabase.from('blocks').select('blocked_id').eq('blocker_id', currentUserId)
       .then(({ data }) => setBlockedIds(new Set((data ?? []).map((b: { blocked_id: string }) => b.blocked_id))))
@@ -390,14 +469,81 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
           <h3 className="font-semibold text-[#dbdee1]">{group.name}</h3>
           <span className="text-xs text-[#949ba4]">{members.length} members</span>
         </div>
-        <button
-          onClick={() => setShowMembers(v => !v)}
-          title="Members"
-          className={`p-1.5 rounded transition-colors ${showMembers ? 'text-[#dbdee1] bg-[#383a40]' : 'text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]'}`}
-        >
-          <Users className="w-4 h-4" />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => {
+              if (!activeCall) {
+                startGroupCall(group.id, group.name)
+              } else if (gcGroupId !== group.id) {
+                joinGroupCall(activeCall.id, group.id, group.name)
+              }
+            }}
+            disabled={!!(activeCall && gcGroupId === group.id)}
+            title={!activeCall ? 'Start voice call' : gcGroupId === group.id ? 'In call (leave from overlay)' : 'Join voice call'}
+            className={`p-1.5 rounded transition-colors ${
+              activeCall && gcGroupId === group.id
+                ? 'text-[#23a55a] bg-[#383a40] cursor-default'
+                : 'text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]'
+            }`}
+          >
+            <Phone className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setShowMembers(v => !v)}
+            title="Members"
+            className={`p-1.5 rounded transition-colors ${showMembers ? 'text-[#dbdee1] bg-[#383a40]' : 'text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]'}`}
+          >
+            <Users className="w-4 h-4" />
+          </button>
+        </div>
       </div>
+
+      {activeCall && (
+        <div className="bg-[#2b2d31] border-b border-[#1e1f22] px-4 py-2 flex items-center gap-3">
+          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className="w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
+            <span className="text-sm text-[#dbdee1] font-medium">Voice Call</span>
+            <div className="flex -space-x-1 ml-1">
+              {callParticipants.slice(0, 5).map(p => (
+                <div
+                  key={p.id}
+                  title={displayName(p.profiles!)}
+                  className="w-5 h-5 rounded-full bg-[#383a40] overflow-hidden border border-[#1e1f22] flex items-center justify-center text-[9px] text-white font-bold"
+                >
+                  {p.profiles?.avatar_url
+                    ? <img src={p.profiles.avatar_url} className="w-full h-full object-cover" alt="" />
+                    : (p.profiles?.display_name || p.profiles?.username)?.charAt(0).toUpperCase()}
+                </div>
+              ))}
+              {callParticipants.length > 5 && (
+                <div className="w-5 h-5 rounded-full bg-[#383a40] border border-[#1e1f22] flex items-center justify-center text-[9px] text-[#949ba4]">
+                  +{callParticipants.length - 5}
+                </div>
+              )}
+            </div>
+            {callParticipants.length > 0 && (
+              <span className="text-xs text-[#949ba4]">
+                {callParticipants.length} participant{callParticipants.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+          {gcGroupId !== group.id ? (
+            <button
+              onClick={() => joinGroupCall(activeCall.id, group.id, group.name)}
+              className="px-3 py-1 bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-medium rounded transition-colors"
+            >
+              Join
+            </button>
+          ) : (
+            <button
+              onClick={leaveGroupCall}
+              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors"
+            >
+              Leave
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Messages */}

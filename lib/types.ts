@@ -131,3 +131,20 @@ export type Call = {
   created_at: string
   ended_at: string | null
 }
+
+export type GroupCall = {
+  id: string
+  group_id: string
+  started_by: string
+  status: 'active' | 'ended'
+  started_at: string
+  ended_at: string | null
+}
+
+export type GroupCallParticipant = {
+  id: string
+  call_id: string
+  user_id: string
+  joined_at: string
+  profiles?: Profile
+}

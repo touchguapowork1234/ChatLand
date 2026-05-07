@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import ServerRail from '@/components/ServerRail'
 import ChannelSidebar from '@/components/ChannelSidebar'
 import CallProvider from '@/components/CallProvider'
+import GroupCallProvider from '@/components/GroupCallProvider'
 import ProfileCardProvider from '@/components/ProfileCardProvider'
 import PremiumThemeProvider from '@/components/PremiumThemeProvider'
 import ThemedMain from '@/components/ThemedMain'
@@ -29,17 +30,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <CallProvider userId={user.id}>
-      <PremiumThemeProvider profile={profile as Profile}>
-        <ProfileCardProvider currentUserId={user.id}>
-          <UnreadProvider profile={profile as Profile}>
-            <div className="flex h-screen overflow-hidden bg-[#1e1f22]">
-              <ServerRail servers={servers} userId={user.id} />
-              <ChannelSidebar profile={profile as Profile} />
-              <ThemedMain>{children}</ThemedMain>
-            </div>
-          </UnreadProvider>
-        </ProfileCardProvider>
-      </PremiumThemeProvider>
+      <GroupCallProvider userId={user.id}>
+        <PremiumThemeProvider profile={profile as Profile}>
+          <ProfileCardProvider currentUserId={user.id}>
+            <UnreadProvider profile={profile as Profile}>
+              <div className="flex h-screen overflow-hidden bg-[#1e1f22]">
+                <ServerRail servers={servers} userId={user.id} />
+                <ChannelSidebar profile={profile as Profile} />
+                <ThemedMain>{children}</ThemedMain>
+              </div>
+            </UnreadProvider>
+          </ProfileCardProvider>
+        </PremiumThemeProvider>
+      </GroupCallProvider>
     </CallProvider>
   )
 }
