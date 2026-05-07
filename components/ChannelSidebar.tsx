@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Hash, Plus, Copy, Check, UserPlus, X, Users } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -33,11 +33,21 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
   const [newChannelName, setNewChannelName] = useState('')
   const [showNewChannel, setShowNewChannel] = useState(false)
   const [copied, setCopied]     = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [groupCtxMenu, setGroupCtxMenu] = useState<{ x: number; y: number; groupId: string; isOwner: boolean } | null>(null)
+
+  // Refs to avoid stale closures in realtime callbacks
+  const currentDmIdRef    = useRef<string | undefined>(undefined)
+  const currentGroupIdRef = useRef<string | undefined>(undefined)
+  const hiddenIdsRef      = useRef<Set<string>>(new Set())
+
+  useEffect(() => { currentDmIdRef.current = dmId },      [dmId])
+  useEffect(() => { currentGroupIdRef.current = groupId }, [groupId])
+  useEffect(() => { hiddenIdsRef.current = hiddenIds },   [hiddenIds])
 
   // Load hidden DM IDs from localStorage
   useEffect(() => {
@@ -45,6 +55,14 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     try {
       const stored = localStorage.getItem(key)
       if (stored) setHiddenIds(new Set(JSON.parse(stored)))
+    } catch {}
+  }, [profile.id])
+
+  // Load unread counts from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`cl_unread_${profile.id}`)
+      if (stored) setUnreadCounts(JSON.parse(stored))
     } catch {}
   }, [profile.id])
 
@@ -60,6 +78,77 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
         r.sender_id === profile.id ? r.receiver_id : r.sender_id
       ))))
   }, [profile.id, serverId])
+
+  // Realtime unread count subscriptions
+  useEffect(() => {
+    if (serverId) return
+
+    const channel = supabase
+      .channel(`unread_${profile.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'dm_messages' },
+        (payload) => {
+          const msg = payload.new as { dm_id: string; sender_id: string }
+          if (msg.sender_id === profile.id) return
+          if (currentDmIdRef.current === msg.dm_id) return
+          // Un-hide if hidden
+          if (hiddenIdsRef.current.has(msg.dm_id)) {
+            const next = new Set(hiddenIdsRef.current)
+            next.delete(msg.dm_id)
+            setHiddenIds(next)
+            try { localStorage.setItem(`cl_hidden_dms_${profile.id}`, JSON.stringify([...next])) } catch {}
+          }
+          setUnreadCounts(prev => {
+            const next = { ...prev, [msg.dm_id]: (prev[msg.dm_id] ?? 0) + 1 }
+            try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
+            return next
+          })
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'group_messages' },
+        (payload) => {
+          const msg = payload.new as { group_id: string; sender_id: string; type?: string }
+          if (msg.sender_id === profile.id) return
+          if (msg.type === 'system') return
+          if (currentGroupIdRef.current === msg.group_id) return
+          setUnreadCounts(prev => {
+            const next = { ...prev, [msg.group_id]: (prev[msg.group_id] ?? 0) + 1 }
+            try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
+            return next
+          })
+        }
+      )
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [profile.id, serverId])
+
+  // Clear unread when navigating into a DM
+  useEffect(() => {
+    if (!dmId) return
+    setUnreadCounts(prev => {
+      if (!prev[dmId]) return prev
+      const next = { ...prev }
+      delete next[dmId]
+      try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [dmId])
+
+  // Clear unread when navigating into a group
+  useEffect(() => {
+    if (!groupId) return
+    setUnreadCounts(prev => {
+      if (!prev[groupId]) return prev
+      const next = { ...prev }
+      delete next[groupId]
+      try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [groupId])
 
   const blockDMUser = async (userId: string) => {
     await supabase.from('blocks').insert({ blocker_id: profile.id, blocked_id: userId })
@@ -259,10 +348,20 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                       : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                   )}
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
-                    {dm.otherUser?.avatar_url
-                      ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
+                  <div className="relative w-8 h-8 shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none">
+                      {dm.otherUser?.avatar_url
+                        ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
+                    </div>
+                    {(unreadCounts[dm.id] ?? 0) > 0 && (
+                      <span
+                        title={displayName(dm.otherUser)}
+                        className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none"
+                      >
+                        {unreadCounts[dm.id] > 99 ? '99+' : unreadCounts[dm.id]}
+                      </span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-medium truncate">{displayName(dm.otherUser)}</p>
@@ -305,8 +404,18 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                         : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                     )}
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center shrink-0">
-                      <Users className="w-4 h-4 text-white" />
+                    <div className="relative w-8 h-8 shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center">
+                        <Users className="w-4 h-4 text-white" />
+                      </div>
+                      {(unreadCounts[g.id] ?? 0) > 0 && (
+                        <span
+                          title={g.name}
+                          className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none"
+                        >
+                          {unreadCounts[g.id] > 99 ? '99+' : unreadCounts[g.id]}
+                        </span>
+                      )}
                     </div>
                     <span className="text-sm font-medium truncate flex-1 text-left">{g.name}</span>
                   </button>
