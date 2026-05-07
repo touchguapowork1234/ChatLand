@@ -6,6 +6,7 @@ import CallProvider from '@/components/CallProvider'
 import ProfileCardProvider from '@/components/ProfileCardProvider'
 import PremiumThemeProvider from '@/components/PremiumThemeProvider'
 import ThemedMain from '@/components/ThemedMain'
+import UnreadProvider from '@/components/UnreadProvider'
 import type { Server, Profile } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -30,11 +31,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <CallProvider userId={user.id}>
       <PremiumThemeProvider profile={profile as Profile}>
         <ProfileCardProvider currentUserId={user.id}>
-          <div className="flex h-screen overflow-hidden bg-[#1e1f22]">
-            <ServerRail servers={servers} userId={user.id} />
-            <ChannelSidebar profile={profile as Profile} />
-            <ThemedMain>{children}</ThemedMain>
-          </div>
+          <UnreadProvider profile={profile as Profile}>
+            <div className="flex h-screen overflow-hidden bg-[#1e1f22]">
+              <ServerRail servers={servers} userId={user.id} />
+              <ChannelSidebar profile={profile as Profile} />
+              <ThemedMain>{children}</ThemedMain>
+            </div>
+          </UnreadProvider>
         </ProfileCardProvider>
       </PremiumThemeProvider>
     </CallProvider>

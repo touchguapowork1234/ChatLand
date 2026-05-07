@@ -1,24 +1,25 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Hash, Plus, Copy, Check, UserPlus, X, Users } from 'lucide-react'
 import { clsx } from 'clsx'
 import { createClient } from '@/lib/supabase/client'
-import type { Channel, Profile, Server, DirectMessage, GroupChat } from '@/lib/types'
+import type { Channel, Profile, Server } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import UserPanel from './UserPanel'
 import CreateGroupModal from './CreateGroupModal'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
-
-type DmEntry = DirectMessage & { otherUser: Profile; lastMsg?: string }
+import { useUnread } from './UnreadProvider'
 
 export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const params = useParams()
   const router = useRouter()
   const supabase = createClient()
   const { openProfile } = useProfileCard()
+  const { dms, groups, hiddenIds, saveHidden, unreadCounts, clearUnread, setGroups } = useUnread()
+
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
 
   const serverId  = params?.serverId  as string | undefined
@@ -28,43 +29,13 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
 
   const [server, setServer]     = useState<Server | null>(null)
   const [channels, setChannels] = useState<Channel[]>([])
-  const [dms, setDms]           = useState<DmEntry[]>([])
-  const [groups, setGroups]     = useState<GroupChat[]>([])
-  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
   const [newChannelName, setNewChannelName] = useState('')
   const [showNewChannel, setShowNewChannel] = useState(false)
   const [copied, setCopied]     = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [groupCtxMenu, setGroupCtxMenu] = useState<{ x: number; y: number; groupId: string; isOwner: boolean } | null>(null)
-
-  // Refs to avoid stale closures in realtime callbacks
-  const currentDmIdRef    = useRef<string | undefined>(undefined)
-  const currentGroupIdRef = useRef<string | undefined>(undefined)
-  const hiddenIdsRef      = useRef<Set<string>>(new Set())
-
-  useEffect(() => { currentDmIdRef.current = dmId },      [dmId])
-  useEffect(() => { currentGroupIdRef.current = groupId }, [groupId])
-  useEffect(() => { hiddenIdsRef.current = hiddenIds },   [hiddenIds])
-
-  // Load hidden DM IDs from localStorage
-  useEffect(() => {
-    const key = `cl_hidden_dms_${profile.id}`
-    try {
-      const stored = localStorage.getItem(key)
-      if (stored) setHiddenIds(new Set(JSON.parse(stored)))
-    } catch {}
-  }, [profile.id])
-
-  // Load unread counts from localStorage
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(`cl_unread_${profile.id}`)
-      if (stored) setUnreadCounts(JSON.parse(stored))
-    } catch {}
-  }, [profile.id])
 
   // Load blocked user IDs + friend IDs
   useEffect(() => {
@@ -78,77 +49,6 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
         r.sender_id === profile.id ? r.receiver_id : r.sender_id
       ))))
   }, [profile.id, serverId])
-
-  // Realtime unread count subscriptions
-  useEffect(() => {
-    if (serverId) return
-
-    const channel = supabase
-      .channel(`unread_${profile.id}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'dm_messages' },
-        (payload) => {
-          const msg = payload.new as { dm_id: string; sender_id: string }
-          if (msg.sender_id === profile.id) return
-          if (currentDmIdRef.current === msg.dm_id) return
-          // Un-hide if hidden
-          if (hiddenIdsRef.current.has(msg.dm_id)) {
-            const next = new Set(hiddenIdsRef.current)
-            next.delete(msg.dm_id)
-            setHiddenIds(next)
-            try { localStorage.setItem(`cl_hidden_dms_${profile.id}`, JSON.stringify([...next])) } catch {}
-          }
-          setUnreadCounts(prev => {
-            const next = { ...prev, [msg.dm_id]: (prev[msg.dm_id] ?? 0) + 1 }
-            try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
-            return next
-          })
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'group_messages' },
-        (payload) => {
-          const msg = payload.new as { group_id: string; sender_id: string; type?: string }
-          if (msg.sender_id === profile.id) return
-          if (msg.type === 'system') return
-          if (currentGroupIdRef.current === msg.group_id) return
-          setUnreadCounts(prev => {
-            const next = { ...prev, [msg.group_id]: (prev[msg.group_id] ?? 0) + 1 }
-            try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
-            return next
-          })
-        }
-      )
-      .subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [profile.id, serverId])
-
-  // Clear unread when navigating into a DM
-  useEffect(() => {
-    if (!dmId) return
-    setUnreadCounts(prev => {
-      if (!prev[dmId]) return prev
-      const next = { ...prev }
-      delete next[dmId]
-      try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
-      return next
-    })
-  }, [dmId])
-
-  // Clear unread when navigating into a group
-  useEffect(() => {
-    if (!groupId) return
-    setUnreadCounts(prev => {
-      if (!prev[groupId]) return prev
-      const next = { ...prev }
-      delete next[groupId]
-      try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
-      return next
-    })
-  }, [groupId])
 
   const blockDMUser = async (userId: string) => {
     await supabase.from('blocks').insert({ blocker_id: profile.id, blocked_id: userId })
@@ -165,11 +65,6 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     setFriendIds(prev => { const next = new Set(prev); next.delete(userId); return next })
   }
 
-  const saveHidden = (next: Set<string>) => {
-    setHiddenIds(next)
-    try { localStorage.setItem(`cl_hidden_dms_${profile.id}`, JSON.stringify([...next])) } catch {}
-  }
-
   const hideDM = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     e.preventDefault()
@@ -179,15 +74,6 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     if (dmId === id) router.push('/')
   }
 
-  // Un-hide the DM you navigate into
-  useEffect(() => {
-    if (dmId && hiddenIds.has(dmId)) {
-      const next = new Set(hiddenIds)
-      next.delete(dmId)
-      saveHidden(next)
-    }
-  }, [dmId])
-
   // Server mode
   useEffect(() => {
     if (!serverId) { setServer(null); setChannels([]); return }
@@ -196,50 +82,6 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     supabase.from('channels').select('*').eq('server_id', serverId).order('created_at', { ascending: true })
       .then(({ data }) => setChannels(data ?? []))
   }, [serverId])
-
-  // DM mode — refetch whenever dmId/groupId changes so new conversations appear immediately
-  useEffect(() => {
-    if (serverId) return
-    const load = async () => {
-      const [{ data: dmData }, { data: memberRows }] = await Promise.all([
-        supabase
-          .from('direct_messages')
-          .select('*')
-          .or(`user1_id.eq.${profile.id},user2_id.eq.${profile.id}`)
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('group_members')
-          .select('group_id')
-          .eq('user_id', profile.id),
-      ])
-
-      if (dmData) {
-        const enriched = await Promise.all(dmData.map(async dm => {
-          const otherId = dm.user1_id === profile.id ? dm.user2_id : dm.user1_id
-          const [{ data: other }, { data: last }] = await Promise.all([
-            supabase.from('profiles').select('*').eq('id', otherId).single(),
-            supabase.from('dm_messages').select('content').eq('dm_id', dm.id)
-              .order('created_at', { ascending: false }).limit(1).single(),
-          ])
-          return { ...dm, otherUser: other as Profile, lastMsg: last?.content }
-        }))
-        setDms(enriched)
-      }
-
-      const groupIds = (memberRows ?? []).map(r => r.group_id)
-      if (groupIds.length > 0) {
-        const { data: groupData } = await supabase
-          .from('group_chats')
-          .select('*')
-          .in('id', groupIds)
-          .order('created_at', { ascending: false })
-        setGroups((groupData ?? []) as GroupChat[])
-      } else {
-        setGroups([])
-      }
-    }
-    load()
-  }, [serverId, profile.id, dmId, groupId])
 
   const createChannel = async () => {
     const name = newChannelName.trim().toLowerCase().replace(/\s+/g, '-')
@@ -355,10 +197,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                         : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
                     </div>
                     {(unreadCounts[dm.id] ?? 0) > 0 && (
-                      <span
-                        title={displayName(dm.otherUser)}
-                        className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none"
-                      >
+                      <span className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
                         {unreadCounts[dm.id] > 99 ? '99+' : unreadCounts[dm.id]}
                       </span>
                     )}
@@ -409,10 +248,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                         <Users className="w-4 h-4 text-white" />
                       </div>
                       {(unreadCounts[g.id] ?? 0) > 0 && (
-                        <span
-                          title={g.name}
-                          className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none"
-                        >
+                        <span className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
                           {unreadCounts[g.id] > 99 ? '99+' : unreadCounts[g.id]}
                         </span>
                       )}
