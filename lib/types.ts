@@ -67,6 +67,9 @@ export type DmMessage = {
   created_at: string
   updated_at: string | null
   reply_to_id: string | null
+  file_url: string | null
+  file_name: string | null
+  file_type: string | null
   profiles?: Profile
 }
 
@@ -93,6 +96,9 @@ export type GroupMessage = {
   created_at: string
   updated_at: string | null
   reply_to_id: string | null
+  file_url: string | null
+  file_name: string | null
+  file_type: string | null
   type: 'message' | 'system'
   profiles?: Profile
 }

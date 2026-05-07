@@ -1,13 +1,14 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Phone, PhoneOff, Mic, MicOff, Send, Pencil, CornerUpLeft, X } from 'lucide-react'
+import { Phone, PhoneOff, Mic, MicOff, Send, Pencil, CornerUpLeft, X, Paperclip, Upload, Trash2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
 import type { DmMessage, Profile, Call } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
+import FileAttachment from './FileAttachment'
 
 interface Props {
   dmId: string
@@ -16,6 +17,8 @@ interface Props {
   initialMessages: DmMessage[]
   initialCalls: Call[]
 }
+
+const MAX_FILE_SIZE = 20 * 1024 * 1024
 
 export default function DMArea({ dmId, otherUser, currentUserId, initialMessages, initialCalls }: Props) {
   const supabase = createClient()
@@ -31,8 +34,14 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const [editing, setEditing]       = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
   const [replyTo, setReplyTo]   = useState<DmMessage | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const inputRef  = useRef<HTMLTextAreaElement>(null)
+  const [pendingFile, setPendingFile] = useState<File | null>(null)
+  const [isDragging, setIsDragging]   = useState(false)
+  const [uploading, setUploading]     = useState(false)
+  const [fileError, setFileError]     = useState('')
+  const bottomRef     = useRef<HTMLDivElement>(null)
+  const inputRef      = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef  = useRef<HTMLInputElement>(null)
+  const dragCounter   = useRef(0)
 
   const startEdit = (msg: DmMessage) => { setEditing(msg.id); setEditContent(msg.content) }
   const cancelEdit = () => setEditing(null)
@@ -50,11 +59,63 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const startReply = (msg: DmMessage) => { setReplyTo(msg); inputRef.current?.focus() }
   const cancelReply = () => setReplyTo(null)
 
+  const pickFile = (file: File) => {
+    if (file.size > MAX_FILE_SIZE) {
+      setFileError('File exceeds 20 MB limit')
+      setTimeout(() => setFileError(''), 4000)
+      return
+    }
+    if (!file.type.startsWith('image/') && !file.type.startsWith('audio/')) {
+      setFileError('Only images and audio files are supported')
+      setTimeout(() => setFileError(''), 4000)
+      return
+    }
+    setPendingFile(file)
+    setFileError('')
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current++
+    setIsDragging(true)
+  }
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault() }
+  const handleDragLeave = () => {
+    dragCounter.current--
+    if (dragCounter.current === 0) setIsDragging(false)
+  }
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    dragCounter.current = 0
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (file) pickFile(file)
+  }
+
+  const uploadFile = async (file: File) => {
+    const ext = file.name.includes('.') ? file.name.split('.').pop() : ''
+    const path = `${currentUserId}/${crypto.randomUUID()}${ext ? '.' + ext : ''}`
+    const { error } = await supabase.storage.from('chat-files').upload(path, file)
+    if (error) return null
+    const { data } = supabase.storage.from('chat-files').getPublicUrl(path)
+    return { url: data.publicUrl, name: file.name, type: file.type }
+  }
+
+  const deleteMsg = async (msg: DmMessage) => {
+    if (msg.file_url) {
+      try {
+        const path = new URL(msg.file_url).pathname.split('/chat-files/')[1]
+        if (path) await supabase.storage.from('chat-files').remove([decodeURIComponent(path)])
+      } catch {}
+    }
+    await supabase.from('dm_messages').delete().eq('id', msg.id).eq('sender_id', currentUserId)
+    setMessages(prev => prev.filter(m => m.id !== msg.id))
+  }
+
   const isCallingThis  = callState === 'calling'  && callingUserId  === otherUser.id
   const isRingingThis  = callState === 'ringing'  && incomingCallerId === otherUser.id
   const isActiveThis   = callState === 'active'   && (callingUserId === otherUser.id || incomingCallerId === otherUser.id)
 
-  // Unified sorted timeline of messages + call events
   const timeline = useMemo(() => [
     ...messages.map(m => ({ type: 'message' as const, data: m, ts: new Date(m.created_at).getTime() })),
     ...calls.map(c => ({ type: 'call' as const, data: c, ts: new Date(c.created_at).getTime() })),
@@ -70,7 +131,6 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         filter: `dm_id=eq.${dmId}`,
       }, async payload => {
         const msg = payload.new as DmMessage
-        // Skip if already added optimistically by send()
         setMessages(prev => {
           if (prev.find(m => m.id === msg.id)) return prev
           supabase.from('profiles').select('*').eq('id', msg.sender_id).single().then(({ data: profile }) => {
@@ -83,7 +143,6 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     return () => { supabase.removeChannel(ch) }
   }, [dmId])
 
-  // Realtime call upserts (INSERT when caller, UPDATE for status changes on both sides)
   useEffect(() => {
     const upsert = (raw: unknown) => {
       const call = raw as Call
@@ -113,17 +172,34 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
   const send = async () => {
     const trimmed = content.trim()
-    if (!trimmed || sending) return
+    if (!trimmed && !pendingFile || sending || uploading) return
     setSending(true)
+
+    let fileFields: { file_url?: string; file_name?: string; file_type?: string } = {}
+    if (pendingFile) {
+      setUploading(true)
+      const result = await uploadFile(pendingFile)
+      setUploading(false)
+      if (!result) {
+        setFileError('Upload failed, please try again')
+        setSending(false)
+        return
+      }
+      fileFields = { file_url: result.url, file_name: result.name, file_type: result.type }
+      setPendingFile(null)
+    }
+
     setContent('')
     const reply = replyTo
     setReplyTo(null)
+
     const { data: newMsg } = await supabase.from('dm_messages')
       .insert({
         dm_id: dmId,
         sender_id: currentUserId,
-        content: trimmed,
+        content: trimmed || '',
         ...(reply ? { reply_to_id: reply.id } : {}),
+        ...fileFields,
       })
       .select('*, profiles(*)')
       .single()
@@ -141,8 +217,36 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setCtxMenu({ x: e.clientX, y: e.clientY, userId })
   }
 
+  const hasTopBar = !!replyTo || !!pendingFile
+
   return (
-    <div className="flex flex-col h-full">
+    <div
+      className="flex flex-col h-full relative"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-50 bg-[#5865f2]/20 border-2 border-dashed border-[#5865f2] rounded-lg flex items-center justify-center pointer-events-none m-2">
+          <div className="text-center">
+            <Upload className="w-12 h-12 text-[#5865f2] mx-auto mb-3" />
+            <p className="text-[#dbdee1] font-semibold text-lg">Drop to share</p>
+            <p className="text-[#949ba4] text-sm mt-1">Images and audio · max 20 MB</p>
+          </div>
+        </div>
+      )}
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,audio/*"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) pickFile(f); e.target.value = '' }}
+      />
+
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x} y={ctxMenu.y}
@@ -150,10 +254,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
         />
       )}
+
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
-        <div className="flex items-center gap-2"
-          onContextMenu={e => onCtx(e, otherUser.id)}>
+        <div className="flex items-center gap-2" onContextMenu={e => onCtx(e, otherUser.id)}>
           <div className="w-7 h-7 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none cursor-pointer">
             {otherUser.avatar_url
               ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
@@ -169,28 +273,23 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         )}
       </div>
 
-      {/* ── Call bar ── */}
+      {/* Call bars */}
       {isCallingThis && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
           <div className="flex gap-1 items-center">
             <div className="w-1.5 h-1.5 rounded-full bg-[#f0b132] animate-ping" />
           </div>
-          <span className="text-[#f0b132] text-sm font-medium flex-1">
-            Calling {displayName(otherUser)}…
-          </span>
+          <span className="text-[#f0b132] text-sm font-medium flex-1">Calling {displayName(otherUser)}…</span>
           <button onClick={endCall}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
             <PhoneOff className="w-3.5 h-3.5" /> End Call
           </button>
         </div>
       )}
-
       {isRingingThis && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
           <Phone className="w-4 h-4 text-[#23a55a] animate-bounce shrink-0" />
-          <span className="text-[#23a55a] text-sm font-medium flex-1">
-            Incoming call from {displayName(otherUser)}
-          </span>
+          <span className="text-[#23a55a] text-sm font-medium flex-1">Incoming call from {displayName(otherUser)}</span>
           <button onClick={acceptCall}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-semibold transition-colors">
             <Phone className="w-3.5 h-3.5" /> Accept
@@ -201,13 +300,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           </button>
         </div>
       )}
-
       {isActiveThis && (
         <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
           <div className="w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
-          <span className="text-[#23a55a] text-sm font-medium flex-1">
-            Voice Connected — {fmt(duration)}
-          </span>
+          <span className="text-[#23a55a] text-sm font-medium flex-1">Voice Connected — {fmt(duration)}</span>
           <button onClick={toggleMute}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
               isMuted ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#383a40] text-[#dbdee1] hover:bg-[#404249]'
@@ -222,7 +318,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         </div>
       )}
 
-      {/* Timeline: messages + call events */}
+      {/* Timeline */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
         {timeline.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
@@ -251,11 +347,11 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               : null
 
             const cfg = {
-              ended:   { bg: 'bg-[#383a40]', fg: 'text-[#949ba4]', icon: <Phone className="w-4 h-4" />,    sub: `Ended${dur ? ` · ${dur}` : ''}` },
-              active:  { bg: 'bg-[#23a55a]/20', fg: 'text-[#23a55a]', icon: <Phone className="w-4 h-4 animate-pulse" />, sub: 'Ongoing…' },
-              ringing: { bg: 'bg-[#f0b132]/20', fg: 'text-[#f0b132]', icon: <Phone className="w-4 h-4" />, sub: isOutgoing ? 'Calling…' : 'Incoming call' },
-              declined:{ bg: 'bg-red-500/20',   fg: 'text-red-400',   icon: <PhoneOff className="w-4 h-4" />, sub: isOutgoing ? 'Declined' : 'You declined' },
-              missed:  { bg: 'bg-red-500/20',   fg: 'text-red-400',   icon: <Phone className="w-4 h-4" />,    sub: 'Missed call' },
+              ended:   { bg: 'bg-[#383a40]',      fg: 'text-[#949ba4]', icon: <Phone className="w-4 h-4" />,                   sub: `Ended${dur ? ` · ${dur}` : ''}` },
+              active:  { bg: 'bg-[#23a55a]/20',   fg: 'text-[#23a55a]', icon: <Phone className="w-4 h-4 animate-pulse" />,     sub: 'Ongoing…' },
+              ringing: { bg: 'bg-[#f0b132]/20',   fg: 'text-[#f0b132]', icon: <Phone className="w-4 h-4" />,                   sub: isOutgoing ? 'Calling…' : 'Incoming call' },
+              declined:{ bg: 'bg-red-500/20',     fg: 'text-red-400',   icon: <PhoneOff className="w-4 h-4" />,               sub: isOutgoing ? 'Declined' : 'You declined' },
+              missed:  { bg: 'bg-red-500/20',     fg: 'text-red-400',   icon: <Phone className="w-4 h-4" />,                   sub: 'Missed call' },
             }[call.status]
 
             return (
@@ -271,7 +367,6 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             )
           }
 
-          // Message
           const msg = item.data as DmMessage
           const prevItem = timeline[i - 1]
           const prevMsg = prevItem?.type === 'message' ? prevItem.data as DmMessage : null
@@ -302,9 +397,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 {repliedMsg && (
                   <div className="flex items-center gap-2 mb-1 text-xs text-[#949ba4] cursor-default">
                     <div className="w-0.5 h-4 bg-[#4e5058] rounded-full shrink-0" />
-                    <span className="font-semibold text-[#b5bac1] truncate max-w-[80px]">
-                      {displayName(repliedMsg.profiles)}
-                    </span>
+                    <span className="font-semibold text-[#b5bac1] truncate max-w-[80px]">{displayName(repliedMsg.profiles)}</span>
                     <span className="truncate">{repliedMsg.content}</span>
                   </div>
                 )}
@@ -338,31 +431,38 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                     </p>
                   </div>
                 ) : (
-                  <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
-                    {msg.content}
-                    {msg.updated_at && (
-                      <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
+                  <>
+                    {msg.content && (
+                      <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
+                        {msg.content}
+                        {msg.updated_at && (
+                          <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
+                        )}
+                      </p>
                     )}
-                  </p>
+                    {msg.file_url && msg.file_name && msg.file_type && (
+                      <FileAttachment url={msg.file_url} name={msg.file_name} type={msg.file_type} />
+                    )}
+                  </>
                 )}
               </div>
               {editing !== msg.id && (
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0 self-start mt-0.5">
-                  <button
-                    onClick={() => startReply(msg)}
-                    className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
-                    title="Reply"
-                  >
+                  <button onClick={() => startReply(msg)} title="Reply"
+                    className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]">
                     <CornerUpLeft className="w-3.5 h-3.5" />
                   </button>
                   {isMe && (
-                    <button
-                      onClick={() => startEdit(msg)}
-                      className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
-                      title="Edit"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                    <>
+                      <button onClick={() => startEdit(msg)} title="Edit"
+                        className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]">
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button onClick={() => deleteMsg(msg)} title="Delete"
+                        className="p-1 rounded text-[#949ba4] hover:text-red-400 hover:bg-[#383a40]">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -372,19 +472,42 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
+      {/* Input area */}
       <div className="px-4 pb-6 pt-2 shrink-0">
-        {replyTo && (
-          <div className="flex items-center gap-2 px-3 py-1.5 mb-1 bg-[#2e3035] rounded-t-lg text-xs text-[#949ba4]">
-            <CornerUpLeft className="w-3 h-3 shrink-0" />
-            <span>Replying to <span className="font-semibold text-[#b5bac1]">{displayName(replyTo.profiles)}</span></span>
-            <span className="flex-1 truncate text-[#6d6f78]">{replyTo.content}</span>
-            <button onClick={cancelReply} className="p-0.5 rounded hover:text-[#dbdee1] hover:bg-[#383a40]">
-              <X className="w-3 h-3" />
-            </button>
+        {fileError && (
+          <p className="text-red-400 text-xs mb-1 px-1">{fileError}</p>
+        )}
+        {hasTopBar && (
+          <div className="bg-[#2e3035] rounded-t-lg overflow-hidden">
+            {pendingFile && (
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#949ba4] border-b border-[#383a40] last:border-0">
+                <span className="flex-1 truncate text-[#b5bac1] font-medium">{pendingFile.name}</span>
+                <span className="shrink-0 text-[#6d6f78]">{(pendingFile.size / 1024 / 1024).toFixed(1)} MB</span>
+                <button onClick={() => setPendingFile(null)} className="p-0.5 rounded hover:text-[#dbdee1]">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+            {replyTo && (
+              <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#949ba4]">
+                <CornerUpLeft className="w-3 h-3 shrink-0" />
+                <span>Replying to <span className="font-semibold text-[#b5bac1]">{displayName(replyTo.profiles)}</span></span>
+                <span className="flex-1 truncate text-[#6d6f78]">{replyTo.content}</span>
+                <button onClick={cancelReply} className="p-0.5 rounded hover:text-[#dbdee1]">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            )}
           </div>
         )}
-        <div className={`bg-[#383a40] flex items-end gap-2 px-4 py-2.5 ${replyTo ? 'rounded-b-lg' : 'rounded-lg'}`}>
+        <div className={`bg-[#383a40] flex items-end gap-2 px-4 py-2.5 ${hasTopBar ? 'rounded-b-lg' : 'rounded-lg'}`}>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach file"
+            className="text-[#949ba4] hover:text-[#dbdee1] transition-colors p-0.5 shrink-0 mb-0.5"
+          >
+            <Paperclip className="w-5 h-5" />
+          </button>
           <textarea
             ref={inputRef}
             value={content}
@@ -399,9 +522,12 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             style={{ resize: 'none' }}
             className="flex-1 bg-transparent text-[#dbdee1] placeholder-[#6d6f78] text-sm outline-none max-h-32 overflow-y-auto leading-relaxed py-0.5"
           />
-          <button onClick={send} disabled={!content.trim() || sending}
-            className="text-[#5865f2] hover:text-[#4752c4] disabled:text-[#4e5058] transition-colors p-0.5 shrink-0">
-            <Send className="w-5 h-5" />
+          <button
+            onClick={send}
+            disabled={(!content.trim() && !pendingFile) || sending || uploading}
+            className="text-[#5865f2] hover:text-[#4752c4] disabled:text-[#4e5058] transition-colors p-0.5 shrink-0"
+          >
+            {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </button>
         </div>
       </div>
