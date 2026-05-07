@@ -8,6 +8,7 @@ import ProfileCardProvider from '@/components/ProfileCardProvider'
 import PremiumThemeProvider from '@/components/PremiumThemeProvider'
 import ThemedMain from '@/components/ThemedMain'
 import UnreadProvider from '@/components/UnreadProvider'
+import StatusProvider from '@/components/StatusProvider'
 import type { Server, Profile } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -29,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
+    <StatusProvider>
     <CallProvider userId={user.id}>
       <GroupCallProvider userId={user.id}>
         <PremiumThemeProvider profile={profile as Profile}>
@@ -44,5 +46,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </PremiumThemeProvider>
       </GroupCallProvider>
     </CallProvider>
+    </StatusProvider>
   )
 }

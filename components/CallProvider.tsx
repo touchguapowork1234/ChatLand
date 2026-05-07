@@ -5,6 +5,7 @@ import { Phone, PhoneOff, Mic, MicOff, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Call, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
+import { useStatus } from './StatusProvider'
 
 type CallState = 'idle' | 'calling' | 'ringing' | 'active' | 'alone'
 
@@ -45,6 +46,7 @@ const SIG = (callId: string) => `signal:${callId}`
 
 export default function CallProvider({ userId, children }: { userId: string; children: React.ReactNode }) {
   const supabase = createClient()
+  const { status } = useStatus()
 
   const [callState, setCallStateRaw]             = useState<CallState>('idle')
   const [otherUser, setOtherUser]                = useState<Profile | null>(null)
@@ -81,7 +83,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   }
 
   useEffect(() => {
-    if (callState === 'ringing') {
+    if (callState === 'ringing' && status !== 'dnd') {
       const audio = new Audio('/incoming_ring_new.wav')
       audio.loop = true
       audio.play().catch(() => {})
