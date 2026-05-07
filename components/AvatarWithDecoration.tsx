@@ -57,7 +57,7 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
             height:    'auto',
             top:       '50%',
             left:      '50%',
-            transform: 'translate(-50%, -47%)',
+            transform: 'translate(-49%, -47%)',
             zIndex:    10,
           }}
         />
