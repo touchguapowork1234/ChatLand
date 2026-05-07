@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/types'
 import { displayName, userTag } from '@/lib/types'
 import { ShootingStarsAnimation, SnowAnimation } from './ProfileBgAnimation'
 import AvatarWithDecoration from './AvatarWithDecoration'
+import { useStatus, STATUS_META } from './StatusProvider'
 
 type Tab = 'overview' | 'mutuals'
 
@@ -18,6 +19,7 @@ interface Props {
 
 export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
   const supabase = createClient()
+  const { getStatus } = useStatus()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [mutuals, setMutuals] = useState<Profile[]>([])
   const [tab, setTab]         = useState<Tab>('overview')
@@ -155,12 +157,20 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             {loading ? (
               <div className="rounded-full bg-[#383a40]" style={{ width: 96, height: 96, boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }} />
             ) : (
-              <div style={{ boxShadow: '0 0 0 4px rgba(0,0,0,0.4)', borderRadius: '50%', display: 'inline-block' }}>
-                <AvatarWithDecoration
-                  avatarUrl={profile?.avatar_url}
-                  displayInitial={(profile?.display_name || profile?.username || '?').charAt(0).toUpperCase()}
-                  size={96}
-                  decoration={profile?.profile_decoration}
+              <div className="relative inline-block">
+                <div style={{ boxShadow: '0 0 0 4px rgba(0,0,0,0.4)', borderRadius: '50%', display: 'inline-block' }}>
+                  <AvatarWithDecoration
+                    avatarUrl={profile?.avatar_url}
+                    displayInitial={(profile?.display_name || profile?.username || '?').charAt(0).toUpperCase()}
+                    size={96}
+                    decoration={profile?.profile_decoration}
+                  />
+                </div>
+                {/* Status dot */}
+                <span
+                  className="absolute bottom-1 right-1 w-5 h-5 rounded-full border-[3px] border-[#232428]"
+                  style={{ background: STATUS_META[getStatus(userId)].color }}
+                  title={STATUS_META[getStatus(userId)].label}
                 />
               </div>
             )}

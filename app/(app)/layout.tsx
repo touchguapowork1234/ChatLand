@@ -30,7 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <StatusProvider>
+    <StatusProvider userId={user.id}>
     <CallProvider userId={user.id}>
       <GroupCallProvider userId={user.id}>
         <PremiumThemeProvider profile={profile as Profile}>
