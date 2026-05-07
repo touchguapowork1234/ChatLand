@@ -12,6 +12,7 @@ import CreateGroupModal from './CreateGroupModal'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
 import { useUnread } from './UnreadProvider'
+import GroupIconCropModal from './GroupIconCropModal'
 
 export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const params = useParams()
@@ -39,6 +40,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [showNameModal, setShowNameModal] = useState<{ groupId: string; currentName: string } | null>(null)
   const [newGroupName, setNewGroupName] = useState('')
   const [iconUploadGroupId, setIconUploadGroupId] = useState<string | null>(null)
+  const [cropFile, setCropFile] = useState<{ file: File; groupId: string } | null>(null)
   const groupIconInputRef = useRef<HTMLInputElement>(null)
 
   // Load blocked user IDs + friend IDs
@@ -121,19 +123,27 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     })
   }
 
-  const handleGroupIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 1: file selected → show crop modal
+  const handleGroupIconChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !iconUploadGroupId) { setIconUploadGroupId(null); return }
     if (!file.type.startsWith('image/')) { setIconUploadGroupId(null); return }
-    const ext = file.name.split('.').pop() ?? 'png'
-    const path = `group-icons/${iconUploadGroupId}/${crypto.randomUUID()}.${ext}`
-    const { error } = await supabase.storage.from('chat-files').upload(path, file, { upsert: true })
-    if (error) { setIconUploadGroupId(null); return }
+    setCropFile({ file, groupId: iconUploadGroupId })
+    setIconUploadGroupId(null)
+  }
+
+  // Step 2: crop saved → upload blob and update group
+  const handleCropSave = async (blob: Blob) => {
+    if (!cropFile) return
+    const { groupId: gId } = cropFile
+    setCropFile(null)
+    // Path under the user's folder so storage policy allows it
+    const path = `${profile.id}/group-icons/${crypto.randomUUID()}.png`
+    const { error } = await supabase.storage.from('chat-files').upload(path, blob, { contentType: 'image/png', upsert: true })
+    if (error) return
     const { data: urlData } = supabase.storage.from('chat-files').getPublicUrl(path)
     const icon_url = urlData.publicUrl
-    const gId = iconUploadGroupId
-    setIconUploadGroupId(null)
     await supabase.from('group_chats').update({ icon_url }).eq('id', gId)
     setGroups(prev => prev.map(g => g.id === gId ? { ...g, icon_url } : g))
     const actor = profile.display_name || profile.username
@@ -219,6 +229,14 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
           className="hidden"
           onChange={handleGroupIconChange}
         />
+        {/* Crop modal */}
+        {cropFile && (
+          <GroupIconCropModal
+            file={cropFile.file}
+            onSave={handleCropSave}
+            onCancel={() => setCropFile(null)}
+          />
+        )}
         {/* Change Name modal */}
         {showNameModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowNameModal(null)}>
