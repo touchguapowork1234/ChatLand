@@ -2,16 +2,13 @@
 
 import { useEffect, useRef } from 'react'
 
-function blendWithDark(hex: string, opacity: number): string {
+function toRgba(hex: string, alpha: number): string {
   const h = hex.replace('#', '')
-  if (h.length !== 6) return hex
+  if (h.length !== 6) return `rgba(0,0,0,0)`
   const r = parseInt(h.slice(0, 2), 16)
   const g = parseInt(h.slice(2, 4), 16)
   const b = parseInt(h.slice(4, 6), 16)
-  const br = Math.round(r * opacity + 49 * (1 - opacity))
-  const bg = Math.round(g * opacity + 51 * (1 - opacity))
-  const bb = Math.round(b * opacity + 56 * (1 - opacity))
-  return `rgb(${br},${bg},${bb})`
+  return `rgba(${r},${g},${b},${alpha})`
 }
 
 export default function ThemedMain({ children }: { children: React.ReactNode }) {
@@ -26,9 +23,7 @@ export default function ThemedMain({ children }: { children: React.ReactNode }) 
       const p = style.getPropertyValue('--theme-primary').trim()
       const s = style.getPropertyValue('--theme-secondary').trim()
       if (p) {
-        const c1 = blendWithDark(p, 0.12)
-        const c2 = blendWithDark(s || p, 0.12)
-        el.style.background = `linear-gradient(135deg, ${c1}, ${c2})`
+        el.style.backgroundImage = `linear-gradient(135deg, ${toRgba(p, 0.07)}, ${toRgba(s || p, 0.05)})`
       }
     }
 
