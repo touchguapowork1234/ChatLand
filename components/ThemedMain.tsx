@@ -26,8 +26,8 @@ export default function ThemedMain({ children }: { children: React.ReactNode }) 
       const p = style.getPropertyValue('--theme-primary').trim()
       const s = style.getPropertyValue('--theme-secondary').trim()
       if (p) {
-        const c1 = blendWithDark(p, 0.25)
-        const c2 = blendWithDark(s || p, 0.25)
+        const c1 = blendWithDark(p, 0.12)
+        const c2 = blendWithDark(s || p, 0.12)
         el.style.background = `linear-gradient(135deg, ${c1}, ${c2})`
       }
     }
