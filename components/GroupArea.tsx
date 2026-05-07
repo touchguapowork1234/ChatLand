@@ -119,12 +119,11 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
     const kicker = members.find(m => m.user_id === currentUserId)
     const kickerName = kicker?.profiles?.display_name || kicker?.profiles?.username || 'Someone'
     await supabase.from('group_members').delete().eq('group_id', group.id).eq('user_id', userId)
-    await supabase.from('group_messages').insert({
-      group_id: group.id,
-      sender_id: currentUserId,
-      content: `${kickerName} kicked ${kickedName} from the group`,
-      type: 'system',
-    })
+    const { data: sysMsg } = await supabase.from('group_messages')
+      .insert({ group_id: group.id, sender_id: currentUserId, content: `${kickerName} kicked ${kickedName} from the group`, type: 'system' })
+      .select('*, profiles(*)')
+      .single()
+    if (sysMsg) setMessages(prev => prev.find(m => m.id === sysMsg.id) ? prev : [...prev, sysMsg as GroupMessage])
     setMembers(prev => prev.filter(m => m.user_id !== userId))
   }
 
@@ -156,12 +155,11 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
             const adderName = adder?.profiles?.display_name || adder?.profiles?.username || 'Someone'
             for (const nm of newMembers) {
               const addedName = nm.profiles?.display_name || nm.profiles?.username || 'Someone'
-              await supabase.from('group_messages').insert({
-                group_id: group.id,
-                sender_id: currentUserId,
-                content: `${adderName} added ${addedName} to the group`,
-                type: 'system',
-              })
+              const { data: sysMsg } = await supabase.from('group_messages')
+                .insert({ group_id: group.id, sender_id: currentUserId, content: `${adderName} added ${addedName} to the group`, type: 'system' })
+                .select('*, profiles(*)')
+                .single()
+              if (sysMsg) setMessages(prev => prev.find(m => m.id === sysMsg.id) ? prev : [...prev, sysMsg as GroupMessage])
             }
           }}
           onClose={() => setShowAddMember(false)}
