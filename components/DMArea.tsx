@@ -42,6 +42,8 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const [uploading, setUploading]     = useState(false)
   const [fileError, setFileError]     = useState('')
   const [ownProfile, setOwnProfile]   = useState<Profile | null>(null)
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null)
+  const [mentionAtPos, setMentionAtPos] = useState(0)
   const bottomRef     = useRef<HTMLDivElement>(null)
   const inputRef      = useRef<HTMLTextAreaElement>(null)
   const fileInputRef  = useRef<HTMLInputElement>(null)
@@ -331,6 +333,53 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setSending(false)
   }
 
+  const currentUserUsername = ownProfile?.username
+
+  const mentionableProfiles: Profile[] = [
+    ...(ownProfile ? [ownProfile] : []),
+    otherUser,
+  ]
+
+  const filteredMentions = mentionQuery === null ? [] : mentionableProfiles.filter(p => {
+    if (!mentionQuery) return true
+    const q = mentionQuery.toLowerCase()
+    return p.username.toLowerCase().includes(q) || (p.display_name || '').toLowerCase().includes(q)
+  }).slice(0, 6)
+
+  const insertMention = (username: string) => {
+    const queryLen = mentionQuery?.length ?? 0
+    const before = content.slice(0, mentionAtPos)
+    const after  = content.slice(mentionAtPos + 1 + queryLen)
+    const newContent = before + '@' + username + ' ' + after
+    setContent(newContent)
+    setMentionQuery(null)
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.style.height = 'auto'
+        inputRef.current.style.height = Math.min(inputRef.current.scrollHeight, 128) + 'px'
+        const pos = (before + '@' + username + ' ').length
+        inputRef.current.focus()
+        inputRef.current.setSelectionRange(pos, pos)
+      }
+    }, 0)
+  }
+
+  const renderMentions = (text: string) => {
+    if (!text.includes('@')) return text
+    const parts = text.split(/(@\w+)/g)
+    return parts.map((part, idx) => {
+      if (/^@\w+$/.test(part)) {
+        const isMe = !!currentUserUsername && part.slice(1) === currentUserUsername
+        return (
+          <span key={idx} className={`font-medium rounded-sm px-0.5 ${isMe ? 'text-[#f0b132] bg-[#f0b132]/10' : 'text-[#5865f2] bg-[#5865f2]/10'}`}>
+            {part}
+          </span>
+        )
+      }
+      return part
+    })
+  }
+
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -596,10 +645,12 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           const isMe = msg.sender_id === currentUserId
           const repliedMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
           const isReplyToMe = !!repliedMsg && repliedMsg.sender_id === currentUserId
+          const isMentionedMe = !!currentUserUsername && msg.content.includes('@' + currentUserUsername)
+          const isHighlighted = isReplyToMe || isMentionedMe
 
           return (
             <div key={msg.id}
-              className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isReplyToMe ? 'bg-[#f0b132]/20' : ''}`}>
+              className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
               {!grouped ? (
                 <div
                   onContextMenu={e => onCtx(e, msg.sender_id)}
@@ -656,7 +707,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                   <>
                     {msg.content && (
                       <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
-                        {msg.content}
+                        {renderMentions(msg.content)}
                         {msg.updated_at && (
                           <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
                         )}
@@ -729,35 +780,70 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             )}
           </div>
         )}
-        <div className={`bg-[#383a40] flex items-end gap-2 px-4 py-2.5 ${hasTopBar ? 'rounded-b-lg' : 'rounded-lg'}`}>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            title="Attach file"
-            className="text-[#949ba4] hover:text-[#dbdee1] transition-colors p-0.5 shrink-0 mb-0.5"
-          >
-            <Paperclip className="w-5 h-5" />
-          </button>
-          <textarea
-            ref={inputRef}
-            value={content}
-            onChange={e => {
-              setContent(e.target.value)
-              e.target.style.height = 'auto'
-              e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
-            }}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-            placeholder={`Message ${displayName(otherUser)}`}
-            rows={1}
-            style={{ resize: 'none' }}
-            className="flex-1 bg-transparent text-[#dbdee1] placeholder-[#6d6f78] text-sm outline-none max-h-32 overflow-y-auto leading-relaxed py-0.5"
-          />
-          <button
-            onClick={send}
-            disabled={(!content.trim() && !pendingFile) || sending || uploading}
-            className="text-[#5865f2] hover:text-[#4752c4] disabled:text-[#4e5058] transition-colors p-0.5 shrink-0"
-          >
-            {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-          </button>
+        <div className="relative">
+          {mentionQuery !== null && filteredMentions.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#2b2d31] border border-[#1e1f22] rounded-lg shadow-xl overflow-y-auto z-50 max-h-48">
+              {filteredMentions.map(user => (
+                <button
+                  key={user.id}
+                  onMouseDown={e => { e.preventDefault(); insertMention(user.username) }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#383a40] text-left"
+                >
+                  <div className="w-6 h-6 rounded-full overflow-hidden bg-[#383a40] flex items-center justify-center text-white text-xs font-bold shrink-0">
+                    {user.avatar_url
+                      ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : (user.display_name || user.username).charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-sm text-[#dbdee1] font-medium">{displayName(user)}</span>
+                  <span className="text-xs text-[#949ba4] ml-auto">@{user.username}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          <div className={`bg-[#383a40] flex items-end gap-2 px-4 py-2.5 ${hasTopBar ? 'rounded-b-lg' : 'rounded-lg'}`}>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              title="Attach file"
+              className="text-[#949ba4] hover:text-[#dbdee1] transition-colors p-0.5 shrink-0 mb-0.5"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+            <textarea
+              ref={inputRef}
+              value={content}
+              onChange={e => {
+                const newVal = e.target.value
+                setContent(newVal)
+                e.target.style.height = 'auto'
+                e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
+                const cursor = e.target.selectionStart ?? newVal.length
+                const textBefore = newVal.slice(0, cursor)
+                const match = textBefore.match(/@(\w*)$/)
+                if (match) {
+                  setMentionQuery(match[1])
+                  setMentionAtPos(cursor - match[0].length)
+                } else {
+                  setMentionQuery(null)
+                }
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Escape' && mentionQuery !== null) { e.preventDefault(); setMentionQuery(null); return }
+                if (e.key === 'Enter' && !e.shiftKey) { setMentionQuery(null); e.preventDefault(); send() }
+              }}
+              onBlur={() => setMentionQuery(null)}
+              placeholder={`Message ${displayName(otherUser)}`}
+              rows={1}
+              style={{ resize: 'none' }}
+              className="flex-1 bg-transparent text-[#dbdee1] placeholder-[#6d6f78] text-sm outline-none max-h-32 overflow-y-auto leading-relaxed py-0.5"
+            />
+            <button
+              onClick={send}
+              disabled={(!content.trim() && !pendingFile) || sending || uploading}
+              className="text-[#5865f2] hover:text-[#4752c4] disabled:text-[#4e5058] transition-colors p-0.5 shrink-0"
+            >
+              {uploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
       </div>
     </div>
