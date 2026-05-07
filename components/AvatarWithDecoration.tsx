@@ -9,13 +9,11 @@ interface Props {
   onClick?: () => void
 }
 
-// 1.5× scale, exact floats — ears and whiskers cover the full avatar border
 const SCALE = 1.5
 
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
   const dec     = decorationById(decoration)
   const decSize = size * SCALE
-  const offset  = -((decSize - size) / 2)
 
   return (
     <div
@@ -33,7 +31,7 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           : displayInitial}
       </div>
 
-      {/* Decoration — scaled so whiskers land exactly on the circle border */}
+      {/* Decoration — centered via CSS transform so it's always perfectly aligned */}
       {dec && (
         <img
           src={dec.src}
@@ -41,11 +39,12 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           draggable={false}
           className="absolute pointer-events-none select-none"
           style={{
-            width:  decSize,
-            height: decSize,
-            top:    offset,
-            left:   offset,
-            zIndex: 10,
+            width:     decSize,
+            height:    decSize,
+            top:       '50%',
+            left:      '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex:    10,
           }}
         />
       )}
