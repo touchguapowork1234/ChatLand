@@ -88,8 +88,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         <div className="px-5 pb-0 relative shrink-0" style={{ marginTop: -48 }}>
           <div
             className="rounded-full border-4 border-transparent bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
-            style={{ boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }}
-            style={{ width: 96, height: 96 }}
+            style={{ width: 96, height: 96, boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }}
           >
             {loading ? null : profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
