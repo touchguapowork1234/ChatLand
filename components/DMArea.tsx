@@ -23,7 +23,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024
 export default function DMArea({ dmId, otherUser, currentUserId, initialMessages, initialCalls }: Props) {
   const supabase = createClient()
   const { callState, callingUserId, incomingCallerId, isMuted, duration,
-          startCall, endCall, acceptCall, declineCall, toggleMute } = useCall()
+          startCall, endCall, leaveCall, rejoinCall, acceptCall, declineCall, toggleMute } = useCall()
   const { openProfile } = useProfileCard()
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
 
@@ -119,6 +119,11 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const isCallingThis  = callState === 'calling'  && callingUserId  === otherUser.id
   const isRingingThis  = callState === 'ringing'  && incomingCallerId === otherUser.id
   const isActiveThis   = callState === 'active'   && (callingUserId === otherUser.id || incomingCallerId === otherUser.id)
+  const isAloneThis    = callState === 'alone'    && (callingUserId === otherUser.id || incomingCallerId === otherUser.id)
+  // Active call we left but haven't ended — show Rejoin button
+  const rejoinableCall = callState === 'idle'
+    ? calls.find(c => c.status === 'active')
+    : null
 
   const timeline = useMemo(() => [
     ...messages.map(m => ({ type: 'message' as const, data: m, ts: new Date(m.created_at).getTime() })),
@@ -458,11 +463,43 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               }`}>
               {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
             </button>
-            <button onClick={endCall} title="End call"
-              className="w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors">
+            <button onClick={leaveCall} title="Leave call"
+              className="w-9 h-9 rounded-full bg-[#4e5058] hover:bg-[#5c5e67] flex items-center justify-center text-white transition-colors">
               <PhoneOff className="w-4 h-4" />
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Alone — partner left, waiting for them to rejoin */}
+      {isAloneThis && (
+        <div className="bg-[#1e1f22] border-b border-[#111214] shrink-0 px-6 pt-4 pb-3">
+          <div className="flex items-center justify-center gap-1.5 mb-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#f0b132] animate-pulse" />
+            <span className="text-xs font-semibold text-[#f0b132] uppercase tracking-wide">
+              Waiting for {displayName(otherUser)} to rejoin…
+            </span>
+          </div>
+          <div className="flex justify-center">
+            <button onClick={endCall} title="End call for both"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
+              <PhoneOff className="w-3.5 h-3.5" />End Call
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rejoin — we left but the call is still active */}
+      {rejoinableCall && (
+        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
+          <span className="text-[#23a55a] text-sm font-medium flex-1">
+            {displayName(otherUser)} is still in the call
+          </span>
+          <button onClick={() => rejoinCall(rejoinableCall.id, otherUser)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-semibold transition-colors">
+            <Phone className="w-3.5 h-3.5" />Rejoin
+          </button>
         </div>
       )}
 
