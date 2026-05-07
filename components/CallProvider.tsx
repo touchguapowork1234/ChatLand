@@ -431,6 +431,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     if (callState !== 'idle') return
     setCallState('calling')
     setOtherUser(otherProfile)
+    setCallingUserId(otherProfile.id)
     callIdRef.current = callId
 
     try {
