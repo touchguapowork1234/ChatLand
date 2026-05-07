@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --theme-primary: #1e1f22;
+  --theme-secondary: #1e1f22;
+}
+
 * { box-sizing: border-box; }
 
 ::-webkit-scrollbar { width: 8px; }

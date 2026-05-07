@@ -16,10 +16,10 @@ interface Props {
 
 export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
   const supabase = createClient()
-  const [profile, setProfile]   = useState<Profile | null>(null)
-  const [mutuals, setMutuals]   = useState<Profile[]>([])
-  const [tab, setTab]           = useState<Tab>('overview')
-  const [loading, setLoading]   = useState(true)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [mutuals, setMutuals] = useState<Profile[]>([])
+  const [tab, setTab]         = useState<Tab>('overview')
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
@@ -46,10 +46,17 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     load()
   }, [userId, currentUserId])
 
-  // Close on backdrop click
   const onBackdrop = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) onClose()
   }
+
+  const bannerStyle = profile?.banner_url
+    ? undefined
+    : {
+        background: profile?.card_primary
+          ? `linear-gradient(135deg, ${profile.card_primary}, ${profile.card_secondary || profile.card_primary})`
+          : 'linear-gradient(135deg, #5865f2, #7983f5)',
+      }
 
   return (
     <div
@@ -58,10 +65,17 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     >
       <div className="bg-[#232428] rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col">
         {/* Banner */}
-        <div className="h-28 bg-gradient-to-br from-[#5865f2] to-[#7983f5] relative shrink-0">
+        <div className="h-28 relative shrink-0" style={bannerStyle}>
+          {profile?.banner_url && (
+            <img
+              src={profile.banner_url}
+              alt="Banner"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
           <button
             onClick={onClose}
-            className="absolute top-2 right-2 p-1 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors"
+            className="absolute top-2 right-2 p-1 rounded-full bg-black/30 hover:bg-black/50 text-white transition-colors z-10"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -69,8 +83,10 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
 
         {/* Avatar */}
         <div className="px-5 pb-0 relative shrink-0" style={{ marginTop: -48 }}>
-          <div className="rounded-full border-4 border-[#232428] bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
-            style={{ width: 96, height: 96 }}>
+          <div
+            className="rounded-full border-4 border-[#232428] bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
+            style={{ width: 96, height: 96 }}
+          >
             {loading ? null : profile?.avatar_url
               ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
               : (profile?.display_name || profile?.username || '?').charAt(0).toUpperCase()}
@@ -83,7 +99,17 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             <div className="h-6 w-36 bg-[#383a40] rounded animate-pulse" />
           ) : (
             <>
-              <p className="text-xl font-bold text-[#dbdee1] leading-tight">{displayName(profile)}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xl font-bold text-[#dbdee1] leading-tight">{displayName(profile)}</p>
+                {profile?.is_premium && (
+                  <img
+                    src="/ysu_premium.png"
+                    alt="Yasu Premium"
+                    title="Yasu Premium"
+                    className="h-5 w-auto shrink-0"
+                  />
+                )}
+              </div>
               <p className="text-sm text-[#949ba4] mt-0.5">{userTag(profile)}</p>
             </>
           )}

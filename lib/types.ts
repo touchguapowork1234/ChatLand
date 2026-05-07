@@ -6,6 +6,12 @@ export type Profile = {
   avatar_url: string | null
   bio: string | null
   created_at: string
+  is_premium?: boolean
+  banner_url?: string | null
+  theme_primary?: string | null
+  theme_secondary?: string | null
+  card_primary?: string | null
+  card_secondary?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>

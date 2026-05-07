@@ -1,10 +1,11 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { X, Upload, ZoomIn, ZoomOut } from 'lucide-react'
+import { X, Upload, ZoomIn, ZoomOut, Sparkles, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
+import { useTheme } from './PremiumThemeProvider'
 
 type Tab = 'profile' | 'account'
 
@@ -14,11 +15,16 @@ interface Props {
   onUpdated: (updated: Profile) => void
 }
 
-const CROP = 160  // viewfinder px
-const OUT  = 256  // canvas output px
+const CROP        = 160
+const OUT         = 256
+const BANNER_W    = 400
+const BANNER_H    = 107
+const BANNER_OUT_W = 840
+const BANNER_OUT_H = 224
 
 export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const supabase = createClient()
+  const { setTheme } = useTheme()
   const [tab, setTab] = useState<Tab>('profile')
 
   // ── Profile tab ──
@@ -31,13 +37,36 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMsg, setProfileMsg]   = useState<{ ok: boolean; text: string } | null>(null)
 
-  const fileRef = useRef<HTMLInputElement>(null)
-  const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const fileRef  = useRef<HTMLInputElement>(null)
+  const dragRef  = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
 
   // ── Account tab ──
   const [tag, setTag]           = useState(profile.tag)
   const [tagLoading, setTagLoading] = useState(false)
   const [tagMsg, setTagMsg]     = useState<{ ok: boolean; text: string } | null>(null)
+
+  // ── Yasu Premium ──
+  const [isPremium, setIsPremium]       = useState(profile.is_premium ?? false)
+  const [codeInput, setCodeInput]       = useState('')
+  const [codeLoading, setCodeLoading]   = useState(false)
+  const [codeMsg, setCodeMsg]           = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Banner
+  const [bannerUrl, setBannerUrl]         = useState(profile.banner_url ?? '')
+  const [bannerSrc, setBannerSrc]         = useState<string | null>(null)
+  const [bannerOffset, setBannerOffset]   = useState({ x: 0, y: 0 })
+  const [bannerZoom, setBannerZoom]       = useState(1)
+  const bannerDragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
+  const bannerFileRef = useRef<HTMLInputElement>(null)
+
+  // Colors
+  const [themePrimary,   setThemePrimary]   = useState(profile.theme_primary   ?? '#5865f2')
+  const [themeSecondary, setThemeSecondary] = useState(profile.theme_secondary  ?? '#7983f5')
+  const [cardPrimary,    setCardPrimary]    = useState(profile.card_primary     ?? '#5865f2')
+  const [cardSecondary,  setCardSecondary]  = useState(profile.card_secondary   ?? '#7983f5')
+
+  const [premiumLoading, setPremiumLoading] = useState(false)
+  const [premiumMsg, setPremiumMsg]         = useState<{ ok: boolean; text: string } | null>(null)
 
   // ── Avatar pick ──
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,11 +79,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       setZoom(1)
     }
     reader.readAsDataURL(file)
-    // reset so the same file can be re-selected
     e.target.value = ''
   }
 
-  // ── Drag handlers ──
+  // ── Avatar drag handlers ──
   const onPD = (e: React.PointerEvent) => {
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = { sx: e.clientX, sy: e.clientY, ox: offset.x, oy: offset.y }
@@ -68,14 +96,13 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   }
   const onPU = () => { dragRef.current = null }
 
-  // ── Canvas crop → Supabase upload ──
+  // ── Canvas crop → Supabase upload (avatar) ──
   const cropAndUpload = async (): Promise<string | null> => {
     if (!alignerSrc) return null
     const img = new Image()
     img.src = alignerSrc
     await new Promise(r => { img.onload = r })
 
-    // Replicate CSS objectFit:cover + transform
     const fitScale = Math.max(CROP / img.naturalWidth, CROP / img.naturalHeight)
     const fw = img.naturalWidth * fitScale
     const fh = img.naturalHeight * fitScale
@@ -116,7 +143,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     if (alignerSrc) {
       newUrl = await cropAndUpload()
       if (!newUrl) {
-        setProfileMsg({ ok: false, text: 'Avatar upload failed. Make sure the "avatars" storage bucket exists in Supabase.' })
+        setProfileMsg({ ok: false, text: 'Avatar upload failed. Make sure the "avatars" storage bucket exists.' })
         setProfileLoading(false)
         return
       }
@@ -162,6 +189,158 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       onUpdated({ ...profile, tag })
     }
     setTagLoading(false)
+  }
+
+  // ── Redeem premium code ──
+  const redeemCode = async () => {
+    setCodeMsg(null)
+    const code = codeInput.trim()
+    if (!code) return
+    setCodeLoading(true)
+
+    const { data: row } = await supabase
+      .from('premium_codes')
+      .select('code, redeemed_by')
+      .eq('code', code)
+      .single()
+
+    if (!row) {
+      setCodeMsg({ ok: false, text: 'Invalid code.' })
+      setCodeLoading(false); return
+    }
+    if (row.redeemed_by) {
+      setCodeMsg({ ok: false, text: 'This code has already been redeemed.' })
+      setCodeLoading(false); return
+    }
+
+    const { error: updateErr } = await supabase
+      .from('premium_codes')
+      .update({ redeemed_by: profile.id, redeemed_at: new Date().toISOString() })
+      .eq('code', code)
+      .is('redeemed_by', null)
+
+    if (updateErr) {
+      setCodeMsg({ ok: false, text: 'Failed to redeem. Try again.' })
+      setCodeLoading(false); return
+    }
+
+    await supabase.from('profiles').update({ is_premium: true }).eq('id', profile.id)
+    setIsPremium(true)
+    setCodeInput('')
+    setCodeMsg({ ok: true, text: 'Yasu Premium activated!' })
+    onUpdated({ ...profile, is_premium: true })
+    setCodeLoading(false)
+  }
+
+  // ── Banner file pick ──
+  const handleBannerFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      setPremiumMsg({ ok: false, text: 'Banner must be under 10 MB.' })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      setBannerSrc(reader.result as string)
+      setBannerOffset({ x: 0, y: 0 })
+      setBannerZoom(1)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  // ── Banner drag handlers ──
+  const onBannerPD = (e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    bannerDragRef.current = { sx: e.clientX, sy: e.clientY, ox: bannerOffset.x, oy: bannerOffset.y }
+  }
+  const onBannerPM = (e: React.PointerEvent) => {
+    if (!bannerDragRef.current) return
+    setBannerOffset({
+      x: bannerDragRef.current.ox + e.clientX - bannerDragRef.current.sx,
+      y: bannerDragRef.current.oy + e.clientY - bannerDragRef.current.sy,
+    })
+  }
+  const onBannerPU = () => { bannerDragRef.current = null }
+
+  // ── Crop banner and upload ──
+  const cropBannerAndUpload = async (): Promise<string | null> => {
+    if (!bannerSrc) return null
+    const img = new Image()
+    img.src = bannerSrc
+    await new Promise(r => { img.onload = r })
+
+    const fitScale = Math.max(BANNER_W / img.naturalWidth, BANNER_H / img.naturalHeight)
+    const fw = img.naturalWidth * fitScale
+    const fh = img.naturalHeight * fitScale
+    const fx = (BANNER_W - fw) / 2
+    const fy = (BANNER_H - fh) / 2
+    const sx = BANNER_OUT_W / BANNER_W
+    const sy = BANNER_OUT_H / BANNER_H
+
+    const canvas = document.createElement('canvas')
+    canvas.width = BANNER_OUT_W; canvas.height = BANNER_OUT_H
+    const ctx = canvas.getContext('2d')!
+
+    const imgX = ((fx - BANNER_W / 2) * bannerZoom + BANNER_W / 2 + bannerOffset.x) * sx
+    const imgY = ((fy - BANNER_H / 2) * bannerZoom + BANNER_H / 2 + bannerOffset.y) * sy
+    ctx.drawImage(img, imgX, imgY, fw * bannerZoom * sx, fh * bannerZoom * sy)
+
+    return new Promise(resolve => {
+      canvas.toBlob(async blob => {
+        if (!blob) { resolve(null); return }
+
+        // Delete old banner
+        if (bannerUrl) {
+          const oldPath = bannerUrl.split('/banners/')[1]?.split('?')[0]
+          if (oldPath) await supabase.storage.from('banners').remove([oldPath])
+        }
+
+        const path = `${profile.id}.jpg`
+        const { error } = await supabase.storage
+          .from('banners').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
+        if (error) { resolve(null); return }
+        const { data } = supabase.storage.from('banners').getPublicUrl(path)
+        resolve(`${data.publicUrl}?t=${Date.now()}`)
+      }, 'image/jpeg', 0.92)
+    })
+  }
+
+  // ── Save premium settings ──
+  const savePremiumSettings = async () => {
+    setPremiumLoading(true)
+    setPremiumMsg(null)
+
+    let newBannerUrl: string | null = null
+    if (bannerSrc) {
+      newBannerUrl = await cropBannerAndUpload()
+      if (!newBannerUrl) {
+        setPremiumMsg({ ok: false, text: 'Banner upload failed. Make sure the "banners" storage bucket exists.' })
+        setPremiumLoading(false)
+        return
+      }
+    }
+
+    const patch: Partial<Profile> = {
+      theme_primary:   themePrimary,
+      theme_secondary: themeSecondary,
+      card_primary:    cardPrimary,
+      card_secondary:  cardSecondary,
+      ...(newBannerUrl ? { banner_url: newBannerUrl } : {}),
+    }
+
+    const { error } = await supabase.from('profiles').update(patch).eq('id', profile.id)
+    if (error) {
+      setPremiumMsg({ ok: false, text: 'Failed to save. Please try again.' })
+    } else {
+      if (newBannerUrl) setBannerUrl(newBannerUrl)
+      setBannerSrc(null)
+      setTheme(themePrimary, themeSecondary)
+      setPremiumMsg({ ok: true, text: 'Premium settings saved!' })
+      onUpdated({ ...profile, ...patch, banner_url: newBannerUrl ?? profile.banner_url })
+    }
+    setPremiumLoading(false)
   }
 
   return (
@@ -210,63 +389,37 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                 </p>
 
                 {alignerSrc ? (
-                  /* ── Alignment tool ── */
                   <div className="space-y-3">
-                    <p className="text-xs text-[#949ba4]">
-                      Drag to reposition · use slider to zoom
-                    </p>
-
-                    {/* Circular crop frame */}
+                    <p className="text-xs text-[#949ba4]">Drag to reposition · use slider to zoom</p>
                     <div
                       className="relative mx-auto rounded-full overflow-hidden select-none"
-                      style={{
-                        width: CROP, height: CROP,
-                        background: '#111',
-                        cursor: dragRef.current ? 'grabbing' : 'grab',
-                      }}
-                      onPointerDown={onPD}
-                      onPointerMove={onPM}
-                      onPointerUp={onPU}
-                      onPointerCancel={onPU}
+                      style={{ width: CROP, height: CROP, background: '#111', cursor: dragRef.current ? 'grabbing' : 'grab' }}
+                      onPointerDown={onPD} onPointerMove={onPM} onPointerUp={onPU} onPointerCancel={onPU}
                     >
                       <img
-                        src={alignerSrc}
-                        alt=""
-                        draggable={false}
+                        src={alignerSrc} alt="" draggable={false}
                         style={{
-                          width: CROP, height: CROP,
-                          objectFit: 'cover',
+                          width: CROP, height: CROP, objectFit: 'cover',
                           transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`,
                           transformOrigin: 'center center',
-                          pointerEvents: 'none',
-                          userSelect: 'none',
+                          pointerEvents: 'none', userSelect: 'none',
                         }}
                       />
                     </div>
-
-                    {/* Zoom slider */}
                     <div className="flex items-center gap-2 mx-auto" style={{ width: CROP }}>
                       <ZoomOut className="w-3.5 h-3.5 text-[#949ba4] shrink-0" />
-                      <input
-                        type="range" min={1} max={3} step={0.02} value={zoom}
-                        onChange={e => setZoom(parseFloat(e.target.value))}
-                        className="flex-1 accent-[#5865f2]"
-                      />
+                      <input type="range" min={1} max={3} step={0.02} value={zoom}
+                        onChange={e => setZoom(parseFloat(e.target.value))} className="flex-1 accent-[#5865f2]" />
                       <ZoomIn className="w-3.5 h-3.5 text-[#949ba4] shrink-0" />
                     </div>
-
-                    {/* Cancel aligner */}
                     <div style={{ width: CROP }} className="mx-auto">
-                      <button
-                        onClick={() => setAlignerSrc(null)}
-                        className="w-full text-xs py-1.5 text-[#949ba4] hover:text-[#dbdee1] border border-[#3f4147] rounded-md transition-colors"
-                      >
+                      <button onClick={() => setAlignerSrc(null)}
+                        className="w-full text-xs py-1.5 text-[#949ba4] hover:text-[#dbdee1] border border-[#3f4147] rounded-md transition-colors">
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  /* ── Avatar preview + upload ── */
                   <div className="flex items-center gap-5">
                     <div className="w-20 h-20 rounded-full overflow-hidden bg-[#5865f2] flex items-center justify-center shrink-0">
                       {avatarUrl ? (
@@ -278,19 +431,14 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                       )}
                     </div>
                     <div>
-                      <button
-                        onClick={() => fileRef.current?.click()}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm font-semibold rounded-md transition-colors"
-                      >
+                      <button onClick={() => fileRef.current?.click()}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm font-semibold rounded-md transition-colors">
                         <Upload className="w-4 h-4" />
                         Choose Photo
                       </button>
                       <p className="text-xs text-[#949ba4] mt-2">JPG, PNG or GIF · Max 5 MB</p>
                     </div>
-                    <input
-                      ref={fileRef} type="file" accept="image/*"
-                      className="hidden" onChange={handleFile}
-                    />
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
                   </div>
                 )}
               </div>
@@ -300,14 +448,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">
                   Display Name
                 </label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  placeholder={profile.username}
-                  maxLength={32}
-                  className="w-full bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm"
-                />
+                <input type="text" value={displayName} onChange={e => setDisplayName(e.target.value)}
+                  placeholder={profile.username} maxLength={32}
+                  className="w-full bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm" />
                 <p className="text-xs text-[#949ba4] mt-1.5">
                   This is how others see your name. Your tag stays as{' '}
                   <span className="font-mono text-[#dbdee1]">{userTag(profile)}</span>.
@@ -319,28 +462,18 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">
                   About Me
                 </label>
-                <textarea
-                  value={bio}
-                  onChange={e => setBio(e.target.value)}
-                  placeholder="Tell others a bit about yourself…"
-                  maxLength={190}
-                  rows={4}
-                  className="w-full bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm resize-none"
-                />
+                <textarea value={bio} onChange={e => setBio(e.target.value)}
+                  placeholder="Tell others a bit about yourself…" maxLength={190} rows={4}
+                  className="w-full bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm resize-none" />
                 <p className="text-xs text-[#949ba4] mt-1">{190 - bio.length} characters remaining</p>
               </div>
 
               {profileMsg && (
-                <p className={`text-sm ${profileMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>
-                  {profileMsg.text}
-                </p>
+                <p className={`text-sm ${profileMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{profileMsg.text}</p>
               )}
 
-              <button
-                onClick={saveProfile}
-                disabled={profileLoading}
-                className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm"
-              >
+              <button onClick={saveProfile} disabled={profileLoading}
+                className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm">
                 {profileLoading ? 'Saving…' : 'Save Changes'}
               </button>
             </div>
@@ -349,42 +482,182 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
           {/* ══ Account tab ══ */}
           {tab === 'account' && (
             <div className="space-y-6">
+
+              {/* Tag */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-1">
-                  Your Tag
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-1">Your Tag</p>
                 <p className="text-[#949ba4] text-sm mb-4">
-                  Current:{' '}
-                  <span className="text-[#dbdee1] font-mono">{userTag(profile)}</span>
+                  Current: <span className="text-[#dbdee1] font-mono">{userTag(profile)}</span>
                 </p>
                 <label className="block text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">
                   New Tag (4 digits)
                 </label>
                 <div className="flex gap-2 items-center">
                   <span className="text-[#949ba4] font-semibold">{profile.username}#</span>
-                  <input
-                    type="text"
-                    value={tag}
+                  <input type="text" value={tag}
                     onChange={e => { setTag(e.target.value.replace(/\D/g, '').slice(0, 4)); setTagMsg(null) }}
-                    placeholder="0001"
-                    maxLength={4}
-                    className="w-24 bg-[#1e1f22] text-[#dbdee1] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] font-mono text-center"
-                  />
+                    placeholder="0001" maxLength={4}
+                    className="w-24 bg-[#1e1f22] text-[#dbdee1] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] font-mono text-center" />
                 </div>
                 {tagMsg && (
-                  <p className={`text-sm mt-2 ${tagMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>
-                    {tagMsg.text}
-                  </p>
+                  <p className={`text-sm mt-2 ${tagMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{tagMsg.text}</p>
                 )}
               </div>
 
-              <button
-                onClick={saveTag}
-                disabled={tag.length !== 4 || tagLoading}
-                className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm"
-              >
+              <button onClick={saveTag} disabled={tag.length !== 4 || tagLoading}
+                className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm">
                 {tagLoading ? 'Saving…' : 'Save Tag'}
               </button>
+
+              {/* Divider */}
+              <div className="border-t border-[#3f4147] pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="w-5 h-5 text-[#f0b132]" />
+                  <p className="text-base font-bold text-[#f0b132]">Yasu Premium</p>
+                  {isPremium && (
+                    <img src="/ysu_premium.png" alt="Yasu Premium" className="h-5 w-auto ml-1" />
+                  )}
+                </div>
+
+                {!isPremium ? (
+                  /* ── Redeem code ── */
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#949ba4]">
+                      Enter a Yasu Premium code to unlock exclusive features.
+                    </p>
+                    <div className="flex gap-2">
+                      <input type="text" value={codeInput}
+                        onChange={e => { setCodeInput(e.target.value); setCodeMsg(null) }}
+                        onKeyDown={e => e.key === 'Enter' && redeemCode()}
+                        placeholder="Enter code…"
+                        className="flex-1 bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#f0b132] text-sm font-mono" />
+                      <button onClick={redeemCode} disabled={!codeInput.trim() || codeLoading}
+                        className="px-4 py-2 bg-[#f0b132] hover:bg-[#d4982a] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-black font-semibold rounded-md transition-colors text-sm flex items-center gap-1.5">
+                        {codeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        Redeem
+                      </button>
+                    </div>
+                    {codeMsg && (
+                      <p className={`text-sm ${codeMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{codeMsg.text}</p>
+                    )}
+                  </div>
+                ) : (
+                  /* ── Premium settings ── */
+                  <div className="space-y-6">
+                    <p className="text-sm text-[#23a55a] font-medium">✓ Yasu Premium is active on your account.</p>
+
+                    {/* Banner */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Profile Banner</p>
+                      {bannerSrc ? (
+                        <div className="space-y-3">
+                          <p className="text-xs text-[#949ba4]">Drag to reposition · use slider to zoom</p>
+                          <div
+                            className="relative mx-auto overflow-hidden rounded-md select-none"
+                            style={{ width: BANNER_W, height: BANNER_H, background: '#111', cursor: bannerDragRef.current ? 'grabbing' : 'grab' }}
+                            onPointerDown={onBannerPD} onPointerMove={onBannerPM} onPointerUp={onBannerPU} onPointerCancel={onBannerPU}
+                          >
+                            <img src={bannerSrc} alt="" draggable={false}
+                              style={{
+                                width: BANNER_W, height: BANNER_H, objectFit: 'cover',
+                                transform: `translate(${bannerOffset.x}px, ${bannerOffset.y}px) scale(${bannerZoom})`,
+                                transformOrigin: 'center center',
+                                pointerEvents: 'none', userSelect: 'none',
+                              }} />
+                          </div>
+                          <div className="flex items-center gap-2 mx-auto" style={{ width: BANNER_W }}>
+                            <ZoomOut className="w-3.5 h-3.5 text-[#949ba4] shrink-0" />
+                            <input type="range" min={1} max={3} step={0.02} value={bannerZoom}
+                              onChange={e => setBannerZoom(parseFloat(e.target.value))} className="flex-1 accent-[#f0b132]" />
+                            <ZoomIn className="w-3.5 h-3.5 text-[#949ba4] shrink-0" />
+                          </div>
+                          <div style={{ width: BANNER_W }} className="mx-auto">
+                            <button onClick={() => setBannerSrc(null)}
+                              className="w-full text-xs py-1.5 text-[#949ba4] hover:text-[#dbdee1] border border-[#3f4147] rounded-md transition-colors">
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-5">
+                          <div className="rounded-md overflow-hidden bg-[#5865f2] shrink-0" style={{ width: 120, height: 32 }}>
+                            {bannerUrl && <img src={bannerUrl} alt="" className="w-full h-full object-cover" />}
+                          </div>
+                          <div>
+                            <button onClick={() => bannerFileRef.current?.click()}
+                              className="flex items-center gap-2 px-4 py-2 bg-[#f0b132] hover:bg-[#d4982a] text-black text-sm font-semibold rounded-md transition-colors">
+                              <Upload className="w-4 h-4" />
+                              {bannerUrl ? 'Change Banner' : 'Upload Banner'}
+                            </button>
+                            <p className="text-xs text-[#949ba4] mt-2">JPG or PNG · Max 10 MB</p>
+                          </div>
+                          <input ref={bannerFileRef} type="file" accept="image/*" className="hidden" onChange={handleBannerFile} />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Interface theme colors */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Interface Theme</p>
+                      <div className="flex gap-6">
+                        <div>
+                          <p className="text-xs text-[#949ba4] mb-1.5">Primary</p>
+                          <div className="flex items-center gap-2">
+                            <input type="color" value={themePrimary} onChange={e => setThemePrimary(e.target.value)}
+                              className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent" />
+                            <span className="text-xs font-mono text-[#dbdee1]">{themePrimary}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#949ba4] mb-1.5">Secondary</p>
+                          <div className="flex items-center gap-2">
+                            <input type="color" value={themeSecondary} onChange={e => setThemeSecondary(e.target.value)}
+                              className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent" />
+                            <span className="text-xs font-mono text-[#dbdee1]">{themeSecondary}</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 h-8 rounded-md mt-6 self-end"
+                          style={{ background: `linear-gradient(to right, ${themePrimary}, ${themeSecondary})` }} />
+                      </div>
+                    </div>
+
+                    {/* Profile card colors */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Profile Card Color</p>
+                      <div className="flex gap-6">
+                        <div>
+                          <p className="text-xs text-[#949ba4] mb-1.5">Primary</p>
+                          <div className="flex items-center gap-2">
+                            <input type="color" value={cardPrimary} onChange={e => setCardPrimary(e.target.value)}
+                              className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent" />
+                            <span className="text-xs font-mono text-[#dbdee1]">{cardPrimary}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-[#949ba4] mb-1.5">Secondary</p>
+                          <div className="flex items-center gap-2">
+                            <input type="color" value={cardSecondary} onChange={e => setCardSecondary(e.target.value)}
+                              className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent" />
+                            <span className="text-xs font-mono text-[#dbdee1]">{cardSecondary}</span>
+                          </div>
+                        </div>
+                        <div className="flex-1 h-8 rounded-md mt-6 self-end"
+                          style={{ background: `linear-gradient(135deg, ${cardPrimary}, ${cardSecondary})` }} />
+                      </div>
+                    </div>
+
+                    {premiumMsg && (
+                      <p className={`text-sm ${premiumMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{premiumMsg.text}</p>
+                    )}
+
+                    <button onClick={savePremiumSettings} disabled={premiumLoading}
+                      className="px-6 py-2.5 bg-[#f0b132] hover:bg-[#d4982a] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-black font-semibold rounded-md transition-colors text-sm flex items-center gap-2">
+                      {premiumLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                      Save Premium Settings
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -56,7 +56,15 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
     setOutgoing((pend ?? []).filter(r => r.sender_id === currentUserId) as FriendRequest[])
   }
 
-  useEffect(() => { load() }, [currentUserId])
+  useEffect(() => {
+    load()
+
+    const channel = supabase.channel('friends-list')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, load)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [currentUserId])
 
   const openDM = async (otherId: string) => {
     const [u1, u2] = [currentUserId, otherId].sort()

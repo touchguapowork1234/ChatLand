@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Plus, Users } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { Server } from '@/lib/types'
+import { createClient } from '@/lib/supabase/client'
 import CreateServerModal from './CreateServerModal'
 import JoinServerModal from './JoinServerModal'
 
@@ -20,6 +21,28 @@ export default function ServerRail({ servers: initial, userId }: Props) {
   const [showMenu, setShowMenu] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [showJoin, setShowJoin] = useState(false)
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const supabase = createClient()
+
+    const fetchCount = async () => {
+      const { count } = await supabase
+        .from('friend_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', userId)
+        .eq('status', 'pending')
+      setPendingCount(count ?? 0)
+    }
+
+    fetchCount()
+
+    const channel = supabase.channel('rail-pending')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, fetchCount)
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [userId])
 
   const activeId = params?.serverId as string | undefined
   const onFriends = typeof window !== 'undefined' && window.location.pathname === '/friends'
@@ -38,10 +61,16 @@ export default function ServerRail({ servers: initial, userId }: Props) {
 
   return (
     <>
-      <div className="w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 gap-2 overflow-y-auto shrink-0">
+      <div className="w-[72px] flex flex-col items-center py-3 gap-2 overflow-y-auto shrink-0"
+        style={{ background: 'linear-gradient(to bottom, var(--theme-primary), var(--theme-secondary))' }}>
         {/* Friends */}
-        <button onClick={() => router.push('/friends')} title="Friends" className={iconClass(onFriends)}>
+        <button onClick={() => router.push('/friends')} title="Friends" className={`relative ${iconClass(onFriends)}`}>
           <Users className="w-5 h-5" />
+          {pendingCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-0.5 leading-none pointer-events-none">
+              {pendingCount > 9 ? '9+' : pendingCount}
+            </span>
+          )}
         </button>
 
         <div className="w-8 h-[2px] bg-[#35373c] rounded-full shrink-0" />
