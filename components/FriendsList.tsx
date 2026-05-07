@@ -9,6 +9,7 @@ import type { FriendRequest, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import ContextMenu from './ContextMenu'
 import { useProfileCard } from './ProfileCardProvider'
+import { useStatus, STATUS_META } from './StatusProvider'
 
 type Tab = 'friends' | 'pending' | 'add'
 
@@ -21,6 +22,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
   const supabase = createClient()
   const router = useRouter()
   const { startCall } = useCall()
+  const { getStatus } = useStatus()
 
   const { openProfile } = useProfileCard()
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string; requestId?: string } | null>(null)
@@ -230,7 +232,9 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-[#dbdee1] text-sm">{displayName(profile)}</p>
-                      <p className="text-xs text-[#949ba4]">Online</p>
+                      <p className="text-xs" style={{ color: STATUS_META[getStatus(profile.id)].color }}>
+                        ● {STATUS_META[getStatus(profile.id)].label}
+                      </p>
                     </div>
                     <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => openDM(profile.id)} title="Message"
