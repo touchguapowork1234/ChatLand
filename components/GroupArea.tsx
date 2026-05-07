@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Users, Pencil, Send, UserPlus, CornerUpLeft, X, Paperclip, Upload, Trash2, Loader2, Phone } from 'lucide-react'
+import { Users, Pencil, Send, UserPlus, CornerUpLeft, X, Paperclip, Upload, Trash2, Loader2, Phone, Mic, MicOff, PhoneOff } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { GroupChat, GroupMember, GroupMessage, GroupCall, GroupCallParticipant, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
@@ -23,7 +23,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024
 export default function GroupArea({ group: initialGroup, initialMessages, initialMembers, currentUserId }: Props) {
   const supabase = createClient()
   const { openProfile } = useProfileCard()
-  const { gcGroupId, startGroupCall, joinGroupCall, leaveGroupCall } = useGroupCall()
+  const { gcGroupId, gcMuted, startGroupCall, joinGroupCall, leaveGroupCall, toggleGcMute } = useGroupCall()
   const [group, setGroup]       = useState(initialGroup)
   const [messages, setMessages] = useState<GroupMessage[]>(initialMessages)
   const [members, setMembers]   = useState<GroupMember[]>(initialMembers)
@@ -499,48 +499,61 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
       </div>
 
       {activeCall && (
-        <div className="bg-[#2b2d31] border-b border-[#1e1f22] px-4 py-2 flex items-center gap-3">
-          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-            <div className="w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
-            <span className="text-sm text-[#dbdee1] font-medium">Voice Call</span>
-            <div className="flex -space-x-1 ml-1">
-              {callParticipants.slice(0, 5).map(p => (
-                <div
-                  key={p.id}
-                  title={displayName(p.profiles!)}
-                  className="w-5 h-5 rounded-full bg-[#383a40] overflow-hidden border border-[#1e1f22] flex items-center justify-center text-[9px] text-white font-bold"
-                >
-                  {p.profiles?.avatar_url
-                    ? <img src={p.profiles.avatar_url} className="w-full h-full object-cover" alt="" />
-                    : (p.profiles?.display_name || p.profiles?.username)?.charAt(0).toUpperCase()}
-                </div>
-              ))}
-              {callParticipants.length > 5 && (
-                <div className="w-5 h-5 rounded-full bg-[#383a40] border border-[#1e1f22] flex items-center justify-center text-[9px] text-[#949ba4]">
-                  +{callParticipants.length - 5}
-                </div>
+        <div className="bg-[#1e1f22] border-b border-[#111214] shrink-0 px-4 pt-3 pb-3">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
+              <span className="text-xs font-semibold text-[#23a55a] uppercase tracking-wide">Voice Call</span>
+              {callParticipants.length > 0 && (
+                <span className="text-xs text-[#949ba4]">
+                  · {callParticipants.length} participant{callParticipants.length !== 1 ? 's' : ''}
+                </span>
               )}
             </div>
-            {callParticipants.length > 0 && (
-              <span className="text-xs text-[#949ba4]">
-                {callParticipants.length} participant{callParticipants.length !== 1 ? 's' : ''}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {gcGroupId === group.id && (
+                <button onClick={toggleGcMute} title={gcMuted ? 'Unmute' : 'Mute'}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                    gcMuted ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#383a40] text-[#dbdee1] hover:bg-[#404249]'
+                  }`}>
+                  {gcMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
+                </button>
+              )}
+              {gcGroupId !== group.id ? (
+                <button
+                  onClick={() => joinGroupCall(activeCall.id, group.id, group.name)}
+                  className="px-3 py-1 bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-medium rounded-full transition-colors"
+                >Join</button>
+              ) : (
+                <button
+                  onClick={leaveGroupCall}
+                  className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-full flex items-center gap-1 transition-colors"
+                >
+                  <PhoneOff className="w-3 h-3" />Leave
+                </button>
+              )}
+            </div>
           </div>
-          {gcGroupId !== group.id ? (
-            <button
-              onClick={() => joinGroupCall(activeCall.id, group.id, group.name)}
-              className="px-3 py-1 bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-medium rounded transition-colors"
-            >
-              Join
-            </button>
-          ) : (
-            <button
-              onClick={leaveGroupCall}
-              className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded transition-colors"
-            >
-              Leave
-            </button>
+          {callParticipants.length > 0 && (
+            <div className="flex gap-5 flex-wrap">
+              {callParticipants.map(p => (
+                <div key={p.id} className="flex flex-col items-center gap-1.5">
+                  <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold bg-[#383a40] ring-2 ${
+                    p.user_id === currentUserId && gcMuted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'
+                  }`}>
+                    {p.profiles?.avatar_url
+                      ? <img src={p.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : (p.profiles?.display_name || p.profiles?.username || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-[10px] text-[#dbdee1] font-medium max-w-[52px] truncate text-center">
+                    {p.user_id === currentUserId ? 'You' : displayName(p.profiles)}
+                  </span>
+                  {p.user_id === currentUserId && gcMuted && (
+                    <MicOff className="w-3 h-3 text-red-400 -mt-0.5" />
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

@@ -41,6 +41,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const [isDragging, setIsDragging]   = useState(false)
   const [uploading, setUploading]     = useState(false)
   const [fileError, setFileError]     = useState('')
+  const [ownProfile, setOwnProfile]   = useState<Profile | null>(null)
   const bottomRef     = useRef<HTMLDivElement>(null)
   const inputRef      = useRef<HTMLTextAreaElement>(null)
   const fileInputRef  = useRef<HTMLInputElement>(null)
@@ -123,6 +124,11 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     ...messages.map(m => ({ type: 'message' as const, data: m, ts: new Date(m.created_at).getTime() })),
     ...calls.map(c => ({ type: 'call' as const, data: c, ts: new Date(c.created_at).getTime() })),
   ].sort((a, b) => a.ts - b.ts), [messages, calls])
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').eq('id', currentUserId).single()
+      .then(({ data }) => { if (data) setOwnProfile(data as Profile) })
+  }, [currentUserId])
 
   useEffect(() => { setMessages(initialMessages); setCalls(initialCalls) }, [dmId])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [timeline.length])
@@ -420,20 +426,43 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         </div>
       )}
       {isActiveThis && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
-          <div className="w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
-          <span className="text-[#23a55a] text-sm font-medium flex-1">Voice Connected — {fmt(duration)}</span>
-          <button onClick={toggleMute}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-colors ${
-              isMuted ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#383a40] text-[#dbdee1] hover:bg-[#404249]'
-            }`}>
-            {isMuted ? <MicOff className="w-3.5 h-3.5" /> : <Mic className="w-3.5 h-3.5" />}
-            {isMuted ? 'Unmute' : 'Mute'}
-          </button>
-          <button onClick={endCall}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
-            <PhoneOff className="w-3.5 h-3.5" /> End Call
-          </button>
+        <div className="bg-[#1e1f22] border-b border-[#111214] shrink-0 px-6 pt-4 pb-3">
+          <div className="flex items-center justify-center gap-1.5 mb-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#23a55a] animate-pulse" />
+            <span className="text-xs font-semibold text-[#23a55a] uppercase tracking-wide">Voice Connected</span>
+            <span className="text-xs text-[#949ba4]">· {fmt(duration)}</span>
+          </div>
+          <div className="flex justify-center items-start gap-14 mb-4">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className={`w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ${isMuted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'}`}>
+                {ownProfile?.avatar_url
+                  ? <img src={ownProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (ownProfile?.display_name || ownProfile?.username || 'Y').charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[11px] text-[#dbdee1] font-medium text-center max-w-[72px] truncate">{displayName(ownProfile) || 'You'}</span>
+              {isMuted && <MicOff className="w-3 h-3 text-red-400 -mt-0.5" />}
+            </div>
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ring-[#23a55a]/70">
+                {otherUser.avatar_url
+                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[11px] text-[#dbdee1] font-medium text-center max-w-[72px] truncate">{displayName(otherUser)}</span>
+            </div>
+          </div>
+          <div className="flex justify-center gap-3">
+            <button onClick={toggleMute} title={isMuted ? 'Unmute' : 'Mute'}
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                isMuted ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'bg-[#383a40] text-[#dbdee1] hover:bg-[#404249]'
+              }`}>
+              {isMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+            </button>
+            <button onClick={endCall} title="End call"
+              className="w-9 h-9 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors">
+              <PhoneOff className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
