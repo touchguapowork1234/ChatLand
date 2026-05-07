@@ -27,6 +27,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
   const [shine, setShine]             = useState({ x: 50, y: 50 })
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!document.documentElement.classList.contains('anim-profile-fade')) return
     const el = wrapperRef.current
     if (!el) return
     const rect = el.getBoundingClientRect()
