@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Hash, Plus, Copy, Check, UserPlus, X, Users } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -36,6 +36,10 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [copied, setCopied]     = useState(false)
   const [showCreateGroup, setShowCreateGroup] = useState(false)
   const [groupCtxMenu, setGroupCtxMenu] = useState<{ x: number; y: number; groupId: string; isOwner: boolean } | null>(null)
+  const [showNameModal, setShowNameModal] = useState<{ groupId: string; currentName: string } | null>(null)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [iconUploadGroupId, setIconUploadGroupId] = useState<string | null>(null)
+  const groupIconInputRef = useRef<HTMLInputElement>(null)
 
   // Load blocked user IDs + friend IDs
   useEffect(() => {
@@ -102,6 +106,43 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  const submitNameChange = async () => {
+    if (!showNameModal) return
+    const name = newGroupName.trim()
+    if (!name || name === showNameModal.currentName) { setShowNameModal(null); return }
+    const { gId } = { gId: showNameModal.groupId }
+    setShowNameModal(null)
+    await supabase.from('group_chats').update({ name }).eq('id', gId)
+    setGroups(prev => prev.map(g => g.id === gId ? { ...g, name } : g))
+    const actor = profile.display_name || profile.username
+    await supabase.from('group_messages').insert({
+      group_id: gId, sender_id: profile.id,
+      content: `${actor} changed the group name to "${name}"`, type: 'system',
+    })
+  }
+
+  const handleGroupIconChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !iconUploadGroupId) { setIconUploadGroupId(null); return }
+    if (!file.type.startsWith('image/')) { setIconUploadGroupId(null); return }
+    const ext = file.name.split('.').pop() ?? 'png'
+    const path = `group-icons/${iconUploadGroupId}/${crypto.randomUUID()}.${ext}`
+    const { error } = await supabase.storage.from('chat-files').upload(path, file, { upsert: true })
+    if (error) { setIconUploadGroupId(null); return }
+    const { data: urlData } = supabase.storage.from('chat-files').getPublicUrl(path)
+    const icon_url = urlData.publicUrl
+    const gId = iconUploadGroupId
+    setIconUploadGroupId(null)
+    await supabase.from('group_chats').update({ icon_url }).eq('id', gId)
+    setGroups(prev => prev.map(g => g.id === gId ? { ...g, icon_url } : g))
+    const actor = profile.display_name || profile.username
+    await supabase.from('group_messages').insert({
+      group_id: gId, sender_id: profile.id,
+      content: `${actor} changed the group icon`, type: 'system',
+    })
+  }
+
   const leaveGroup = async (gId: string) => {
     const name = profile.display_name || profile.username
     await supabase.from('group_messages').insert({
@@ -150,10 +191,55 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
             x={groupCtxMenu.x} y={groupCtxMenu.y}
             onClose={() => setGroupCtxMenu(null)}
             items={[
+              {
+                label: 'Change Name',
+                onClick: () => {
+                  const g = groups.find(g => g.id === groupCtxMenu.groupId)
+                  setNewGroupName(g?.name ?? '')
+                  setShowNameModal({ groupId: groupCtxMenu.groupId, currentName: g?.name ?? '' })
+                },
+              },
+              {
+                label: 'Change Icon',
+                onClick: () => {
+                  setIconUploadGroupId(groupCtxMenu.groupId)
+                  groupIconInputRef.current?.click()
+                },
+              },
               ...(groupCtxMenu.isOwner ? [{ label: 'Delete Group', danger: true, onClick: () => deleteGroup(groupCtxMenu.groupId) }] : []),
               { label: 'Leave Group', danger: true, onClick: () => leaveGroup(groupCtxMenu.groupId) },
             ]}
           />
+        )}
+        {/* Hidden file input for group icon upload */}
+        <input
+          ref={groupIconInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleGroupIconChange}
+        />
+        {/* Change Name modal */}
+        {showNameModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={() => setShowNameModal(null)}>
+            <div className="bg-[#2b2d31] rounded-lg p-5 w-80 shadow-xl" onClick={e => e.stopPropagation()}>
+              <h3 className="text-[#dbdee1] font-semibold mb-1">Change Group Name</h3>
+              <p className="text-xs text-[#949ba4] mb-3">Enter a new name for this group.</p>
+              <input
+                autoFocus
+                value={newGroupName}
+                onChange={e => setNewGroupName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitNameChange(); if (e.key === 'Escape') setShowNameModal(null) }}
+                maxLength={50}
+                className="w-full bg-[#1e1f22] text-[#dbdee1] px-3 py-2 rounded text-sm outline-none placeholder-[#949ba4]"
+                placeholder="Group name"
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <button onClick={() => setShowNameModal(null)} className="px-3 py-1.5 text-sm text-[#949ba4] hover:text-[#dbdee1] transition-colors">Cancel</button>
+                <button onClick={submitNameChange} className="px-3 py-1.5 text-sm bg-[#5865f2] hover:bg-[#4752c4] text-white rounded transition-colors">Save</button>
+              </div>
+            </div>
+          </div>
         )}
         <div className="w-60 flex flex-col shrink-0" style={{ background: 'linear-gradient(var(--theme-overlay-sidebar),var(--theme-overlay-sidebar)),linear-gradient(to bottom,var(--theme-primary),var(--theme-secondary))' }}>
           <div className="p-3 border-b border-[#1e1f22] flex items-center gap-2">
@@ -244,8 +330,10 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     )}
                   >
                     <div className="relative w-8 h-8 shrink-0">
-                      <div className="w-8 h-8 rounded-full bg-[#5865f2] flex items-center justify-center">
-                        <Users className="w-4 h-4 text-white" />
+                      <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center">
+                        {g.icon_url
+                          ? <img src={g.icon_url} alt="" className="w-full h-full object-cover" />
+                          : <Users className="w-4 h-4 text-white" />}
                       </div>
                       {(unreadCounts[g.id] ?? 0) > 0 && (
                         <span className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">

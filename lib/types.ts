@@ -95,6 +95,7 @@ export type GroupChat = {
   name: string
   created_by: string
   created_at: string
+  icon_url?: string | null
 }
 
 export type GroupMember = {

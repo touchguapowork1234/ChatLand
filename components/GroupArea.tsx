@@ -19,9 +19,10 @@ interface Props {
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 
-export default function GroupArea({ group, initialMessages, initialMembers, currentUserId }: Props) {
+export default function GroupArea({ group: initialGroup, initialMessages, initialMembers, currentUserId }: Props) {
   const supabase = createClient()
   const { openProfile } = useProfileCard()
+  const [group, setGroup]       = useState(initialGroup)
   const [messages, setMessages] = useState<GroupMessage[]>(initialMessages)
   const [members, setMembers]   = useState<GroupMember[]>(initialMembers)
   const [content, setContent]   = useState('')
@@ -192,6 +193,19 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
           if (prev.find(m => m.id === mem.id)) return prev
           return [...prev, { ...mem, profiles: profile as Profile }]
         })
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [group.id])
+
+  // Realtime group metadata (name / icon changes)
+  useEffect(() => {
+    const ch = supabase.channel(`group_meta_${group.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'group_chats',
+        filter: `id=eq.${group.id}`,
+      }, payload => {
+        setGroup(payload.new as GroupChat)
       })
       .subscribe()
     return () => { supabase.removeChannel(ch) }
@@ -368,7 +382,11 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
         <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-[#949ba4] shrink-0" />
+          <div className="w-6 h-6 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center shrink-0">
+            {group.icon_url
+              ? <img src={group.icon_url} alt="" className="w-full h-full object-cover" />
+              : <Users className="w-3.5 h-3.5 text-white" />}
+          </div>
           <h3 className="font-semibold text-[#dbdee1]">{group.name}</h3>
           <span className="text-xs text-[#949ba4]">{members.length} members</span>
         </div>
@@ -386,8 +404,10 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
         <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-[#5865f2] rounded-full flex items-center justify-center mb-4">
-                <Users className="w-8 h-8 text-white" />
+              <div className="w-16 h-16 bg-[#5865f2] rounded-full overflow-hidden flex items-center justify-center mb-4">
+                {group.icon_url
+                  ? <img src={group.icon_url} alt="" className="w-full h-full object-cover" />
+                  : <Users className="w-8 h-8 text-white" />}
               </div>
               <p className="text-2xl font-bold text-[#dbdee1] mb-1">Welcome to {group.name}!</p>
               <p className="text-[#949ba4] text-sm">This is the beginning of the group chat.</p>

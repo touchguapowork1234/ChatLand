@@ -97,9 +97,11 @@ export default function ServerRail({ servers: initial, userId }: Props) {
             key={g.id}
             onClick={() => router.push(`/group/${g.id}`)}
             title={g.name}
-            className="relative w-12 h-12 rounded-[50%] hover:rounded-[16px] transition-all duration-150 shrink-0 bg-[#5865f2] flex items-center justify-center"
+            className="relative w-12 h-12 rounded-[50%] hover:rounded-[16px] transition-all duration-150 shrink-0 bg-[#5865f2] overflow-hidden flex items-center justify-center"
           >
-            <Users className="w-5 h-5 text-white" />
+            {g.icon_url
+              ? <img src={g.icon_url} alt="" className="w-full h-full object-cover" />
+              : <Users className="w-5 h-5 text-white" />}
             <span className="absolute bottom-0 right-0 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
               {unreadCounts[g.id] > 99 ? '99+' : unreadCounts[g.id]}
             </span>

@@ -147,6 +147,17 @@ export default function UnreadProvider({ profile, children }: { profile: Profile
     })
   }
 
+  // Keep groups state in sync when name/icon changes
+  useEffect(() => {
+    const ch = supabase.channel(`group_meta_unread_${profile.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'group_chats' }, payload => {
+        const updated = payload.new as GroupChat
+        setGroups(prev => prev.map(g => g.id === updated.id ? updated : g))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [profile.id])
+
   // Realtime unread subscriptions
   useEffect(() => {
     const channel = supabase.channel(`unread_${profile.id}`)
