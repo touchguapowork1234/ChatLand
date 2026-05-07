@@ -338,7 +338,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
           if (oldPath) await supabase.storage.from('banners').remove([oldPath])
         }
 
-        const path = `${profile.id}.jpg`
+        const path = `${profile.id}/banner.jpg`
         const { error } = await supabase.storage
           .from('banners').upload(path, blob, { upsert: true, contentType: 'image/jpeg' })
         if (error) { resolve(null); return }
