@@ -9,8 +9,8 @@ interface Props {
   onClick?: () => void
 }
 
-// 1.2× scale, exact floats — no rounding so both sides are perfectly symmetric
-const SCALE = 1.2
+// 1.5× scale, exact floats — ears and whiskers cover the full avatar border
+const SCALE = 1.5
 
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
   const dec     = decorationById(decoration)

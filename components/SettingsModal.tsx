@@ -848,7 +848,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                           >
                             {/* Preview: avatar circle with decoration overlaid */}
                             {(() => {
-                              const s = 48, d = s * 1.2, o = -((d - s) / 2)
+                              const s = 48, d = s * 1.5, o = -((d - s) / 2)
                               return (
                                 <div className="relative" style={{ width: s, height: s }}>
                                   <div className="w-full h-full rounded-full bg-[#5865f2]" />
