@@ -68,8 +68,9 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   const sigRef     = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const subsRef    = useRef<ReturnType<typeof supabase.channel>[]>([])
-  const callStateRef = useRef<CallState>('idle')
-  const isMutedRef   = useRef(false)
+  const callStateRef  = useRef<CallState>('idle')
+  const isMutedRef    = useRef(false)
+  const aloneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const setCallState = (s: CallState) => {
     callStateRef.current = s
@@ -98,6 +99,16 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     return () => {
       if (ringRef.current) { ringRef.current.pause(); ringRef.current = null }
     }
+  }, [callState])
+
+  // Auto-end call after 3 minutes alone
+  useEffect(() => {
+    if (callState === 'alone') {
+      aloneTimerRef.current = setTimeout(() => { endCall() }, 3 * 60 * 1000)
+    } else {
+      if (aloneTimerRef.current) { clearTimeout(aloneTimerRef.current); aloneTimerRef.current = null }
+    }
+    return () => { if (aloneTimerRef.current) { clearTimeout(aloneTimerRef.current); aloneTimerRef.current = null } }
   }, [callState])
 
   const cleanup = () => {

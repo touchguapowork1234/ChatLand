@@ -73,6 +73,17 @@ export default function GroupCallProvider({ userId, children }: { userId: string
   // keep gcInCallRef in sync
   useEffect(() => { gcInCallRef.current = gcInCall }, [gcInCall])
 
+  // Auto-end group call after 3 minutes alone (no peers)
+  useEffect(() => {
+    const peerCount = Object.keys(gcPeerMuted).length
+    if (gcInCall && peerCount === 0) {
+      aloneTimerRef.current = setTimeout(() => { leaveGroupCall() }, 3 * 60 * 1000)
+    } else {
+      if (aloneTimerRef.current) { clearTimeout(aloneTimerRef.current); aloneTimerRef.current = null }
+    }
+    return () => { if (aloneTimerRef.current) { clearTimeout(aloneTimerRef.current); aloneTimerRef.current = null } }
+  }, [gcInCall, Object.keys(gcPeerMuted).length])
+
   // ring sound
   useEffect(() => {
     if (gcRinging) {
@@ -121,8 +132,9 @@ export default function GroupCallProvider({ userId, children }: { userId: string
   }, [userId])
 
   // refs — persist across renders without triggering re-renders
-  const gcCallIdRef  = useRef<string | null>(null)
-  const gcGroupIdRef = useRef<string | null>(null)
+  const gcCallIdRef   = useRef<string | null>(null)
+  const gcGroupIdRef  = useRef<string | null>(null)
+  const aloneTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const gcLocal      = useRef<MediaStream | null>(null)
   const gcChannel    = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
