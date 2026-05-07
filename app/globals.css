@@ -20,8 +20,8 @@
 /* ── Yasu Premium: Advanced Animations ── */
 
 @keyframes profileCardIn {
-  0%   { opacity: 0; transform: scale(0.3); }
-  60%  { opacity: 1; }
+  0%   { opacity: 0; transform: scale(0.1); }
+  40%  { opacity: 1; }
   100% { opacity: 1; transform: scale(1); }
 }
 @keyframes profileBackdropIn {
@@ -47,7 +47,7 @@
 }
 
 html.anim-profile-fade .profile-card-animate {
-  animation: profileCardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: profileCardIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 html.anim-profile-fade .profile-backdrop-animate {
   animation: profileBackdropIn 0.25s ease-out both;
