@@ -5,6 +5,9 @@
 :root {
   --theme-primary: #2b2d31;
   --theme-secondary: #2b2d31;
+  --theme-overlay-rail: rgba(0,0,0,0);
+  --theme-overlay-sidebar: rgba(0,0,0,0);
+  --theme-active: 0;
 }
 
 * { box-sizing: border-box; }

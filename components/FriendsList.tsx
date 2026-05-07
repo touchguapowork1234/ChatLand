@@ -187,7 +187,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                   <div key={requestId}
                     onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, userId: profile.id }) }}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] group transition-colors">
-                    <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                       {profile.avatar_url
                         ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
                         : (profile.display_name || profile.username).charAt(0).toUpperCase()}
@@ -226,7 +226,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                     <div key={req.id}
                       onContextMenu={e => { e.preventDefault(); req.sender?.id && setCtxMenu({ x: e.clientX, y: e.clientY, userId: req.sender.id }) }}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                         {req.sender?.avatar_url
                           ? <img src={req.sender.avatar_url} alt="" className="w-full h-full object-cover" />
                           : (req.sender?.display_name || req.sender?.username || '?').charAt(0).toUpperCase()}
@@ -260,7 +260,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                   {outgoing.map(req => (
                     <div key={req.id}
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
-                      <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                         {req.receiver?.avatar_url
                           ? <img src={req.receiver.avatar_url} alt="" className="w-full h-full object-cover" />
                           : (req.receiver?.display_name || req.receiver?.username || '?').charAt(0).toUpperCase()}

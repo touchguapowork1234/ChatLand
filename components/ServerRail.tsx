@@ -62,7 +62,7 @@ export default function ServerRail({ servers: initial, userId }: Props) {
   return (
     <>
       <div className="w-[72px] flex flex-col items-center py-3 gap-2 overflow-y-auto shrink-0"
-        style={{ background: 'linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),linear-gradient(to bottom,var(--theme-primary),var(--theme-secondary))' }}>
+        style={{ background: 'linear-gradient(var(--theme-overlay-rail),var(--theme-overlay-rail)),linear-gradient(to bottom,var(--theme-primary),var(--theme-secondary))' }}>
         {/* Friends */}
         <button onClick={() => router.push('/friends')} title="Friends" className={`relative ${iconClass(onFriends)}`}>
           <Users className="w-5 h-5" />

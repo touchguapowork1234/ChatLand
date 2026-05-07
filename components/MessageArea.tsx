@@ -103,7 +103,7 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
               )}
               <div className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
                 {!grouped ? (
-                  <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold text-sm shrink-0 mt-0.5 select-none">
+                  <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold text-sm shrink-0 mt-0.5 select-none">
                     {msg.profiles?.avatar_url
                       ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                       : (msg.profiles?.display_name || msg.profiles?.username)?.charAt(0).toUpperCase()}

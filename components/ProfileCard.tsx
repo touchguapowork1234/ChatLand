@@ -88,7 +88,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         {/* Avatar */}
         <div className="px-5 pb-0 relative shrink-0" style={{ marginTop: -48 }}>
           <div
-            className="rounded-full border-4 border-transparent bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
+            className="rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
             style={{ width: 96, height: 96, boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }}
           >
             {loading ? null : profile?.avatar_url
@@ -168,7 +168,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
               <div className="space-y-1">
                 {mutuals.map(m => (
                   <div key={m.id} className="flex items-center gap-3 py-1.5">
-                    <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
+                    <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
                       {m.avatar_url
                         ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
                         : (m.display_name || m.username).charAt(0).toUpperCase()}

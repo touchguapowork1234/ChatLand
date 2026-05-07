@@ -135,7 +135,7 @@ export default function CreateGroupModal({ currentUserId, onClose }: { currentUs
                     isSelected ? 'bg-[#5865f2]/20' : 'hover:bg-[#383a40]'
                   }`}
                 >
-                  <div className="w-9 h-9 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0 select-none">
+                  <div className="w-9 h-9 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0 select-none">
                     {p.avatar_url
                       ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
                       : (p.display_name || p.username).charAt(0).toUpperCase()}

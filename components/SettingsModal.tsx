@@ -471,7 +471,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                   </div>
                 ) : (
                   <div className="flex items-center gap-5">
-                    <div className="w-20 h-20 rounded-full overflow-hidden bg-[#5865f2] flex items-center justify-center shrink-0">
+                    <div className="w-20 h-20 rounded-full overflow-hidden bg-[#383a40] flex items-center justify-center shrink-0">
                       {avatarUrl ? (
                         <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                       ) : (

@@ -351,7 +351,7 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
                   {!grouped ? (
                     <div
                       onContextMenu={e => onCtx(e, msg.sender_id)}
-                      className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
+                      className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#383a40]' : 'bg-[#383a40]'}`}>
                       {msg.profiles?.avatar_url
                         ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                         : (msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
@@ -460,7 +460,7 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
                 <div key={m.id}
                   onContextMenu={e => onCtx(e, m.user_id)}
                   className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer">
-                  <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
+                  <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
                     {m.profiles?.avatar_url
                       ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                       : (m.profiles?.display_name || m.profiles?.username || '?').charAt(0).toUpperCase()}

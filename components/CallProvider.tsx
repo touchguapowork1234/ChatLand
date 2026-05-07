@@ -389,7 +389,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
               className="absolute top-4 right-4 text-[#949ba4] hover:text-[#dbdee1]">
               <X className="w-4 h-4" />
             </button>
-            <div className="w-20 h-20 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 select-none">
+            <div className="w-20 h-20 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 select-none">
               {incomingData.caller.avatar_url
                 ? <img src={incomingData.caller.avatar_url} alt="" className="w-full h-full object-cover" />
                 : (incomingData.caller.display_name || incomingData.caller.username).charAt(0).toUpperCase()}
@@ -414,7 +414,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
       {(callState === 'calling' || callState === 'active') && otherUser && (
         <div className="fixed bottom-6 right-6 bg-[#232428] border border-[#3f4147] rounded-2xl p-4 shadow-2xl z-40 w-60">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white font-bold shrink-0 text-sm select-none">
+            <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0 text-sm select-none">
               {otherUser.avatar_url
                 ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
                 : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}

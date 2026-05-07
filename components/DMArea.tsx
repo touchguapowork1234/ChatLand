@@ -258,7 +258,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       {/* Header */}
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shrink-0 shadow-sm">
         <div className="flex items-center gap-2" onContextMenu={e => onCtx(e, otherUser.id)}>
-          <div className="w-7 h-7 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none cursor-pointer">
+          <div className="w-7 h-7 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none cursor-pointer">
             {otherUser.avatar_url
               ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
               : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
@@ -322,7 +322,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
         {timeline.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
-            <div className="w-16 h-16 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
+            <div className="w-16 h-16 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
               {otherUser.avatar_url
                 ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
                 : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
@@ -381,7 +381,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               {!grouped ? (
                 <div
                   onContextMenu={e => onCtx(e, msg.sender_id)}
-                  className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#5865f2]' : 'bg-[#ed4245]'}`}>
+                  className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#383a40]' : 'bg-[#383a40]'}`}>
                   {msg.profiles?.avatar_url
                     ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
                     : (msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
