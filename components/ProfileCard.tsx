@@ -50,20 +50,23 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     if (e.target === e.currentTarget) onClose()
   }
 
-  const bannerStyle = profile?.banner_url
-    ? undefined
-    : {
-        background: profile?.card_primary
-          ? `linear-gradient(135deg, ${profile.card_primary}, ${profile.card_secondary || profile.card_primary})`
-          : 'linear-gradient(135deg, #5865f2, #7983f5)',
-      }
+  const cardPrimary   = profile?.card_primary   ?? '#5865f2'
+  const cardSecondary = profile?.card_secondary ?? '#7983f5'
+
+  const bannerStyle: React.CSSProperties = profile?.banner_url
+    ? {}
+    : { background: `linear-gradient(135deg, ${cardPrimary}, ${cardSecondary})` }
+
+  const cardBodyStyle: React.CSSProperties = {
+    background: `linear-gradient(160deg, ${cardPrimary}28 0%, ${cardSecondary}10 40%, #232428 70%)`,
+  }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={onBackdrop}
     >
-      <div className="bg-[#232428] rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col">
+      <div className="rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col" style={loading ? { background: '#232428' } : cardBodyStyle}>
         {/* Banner */}
         <div className="h-28 relative shrink-0" style={bannerStyle}>
           {profile?.banner_url && (
@@ -84,7 +87,8 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         {/* Avatar */}
         <div className="px-5 pb-0 relative shrink-0" style={{ marginTop: -48 }}>
           <div
-            className="rounded-full border-4 border-[#232428] bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
+            className="rounded-full border-4 border-transparent bg-[#5865f2] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
+            style={{ boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }}
             style={{ width: 96, height: 96 }}
           >
             {loading ? null : profile?.avatar_url

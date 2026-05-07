@@ -186,7 +186,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
             ]}
           />
         )}
-        <div className="w-60 bg-[#2b2d31] flex flex-col shrink-0">
+        <div className="w-60 flex flex-col shrink-0" style={{ background: 'linear-gradient(to bottom, var(--theme-primary), var(--theme-secondary))' }}>
           <div className="p-3 border-b border-[#1e1f22] flex items-center gap-2">
             <button
               onClick={() => router.push('/friends')}
@@ -287,7 +287,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const isOwner = profile?.id === server?.owner_id
 
   return (
-    <div className="w-60 bg-[#2b2d31] flex flex-col shrink-0">
+    <div className="w-60 flex flex-col shrink-0" style={{ background: 'linear-gradient(to bottom, var(--theme-primary), var(--theme-secondary))' }}>
       <div className="h-12 px-4 flex items-center justify-between border-b border-[#1e1f22] shadow-sm">
         <h2 className="font-bold text-[#dbdee1] truncate">{server?.name ?? '…'}</h2>
         {server?.invite_code && (

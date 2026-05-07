@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --theme-primary: #1e1f22;
-  --theme-secondary: #1e1f22;
+  --theme-primary: #2b2d31;
+  --theme-secondary: #2b2d31;
 }
 
 * { box-sizing: border-box; }
