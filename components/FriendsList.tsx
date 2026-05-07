@@ -34,6 +34,9 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
   const [addInput, setAddInput] = useState('')
   const [addStatus, setAddStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [loading, setLoading] = useState(false)
+  const [nicknames, setNicknames] = useState<Map<string, string>>(new Map())
+  const [nicknameModal, setNicknameModal] = useState<{ friendId: string; friendName: string } | null>(null)
+  const [nicknameInput, setNicknameInput] = useState('')
 
   const load = async () => {
     const { data: accepted } = await supabase
@@ -48,6 +51,14 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
         profile: (r.sender_id === currentUserId ? r.receiver : r.sender) as unknown as Profile,
       }))
     )
+
+    const { data: nicks } = await supabase
+      .from('friend_nicknames')
+      .select('friend_id, nickname')
+      .eq('user_id', currentUserId)
+    const map = new Map<string, string>()
+    ;(nicks ?? []).forEach((n: { friend_id: string; nickname: string }) => map.set(n.friend_id, n.nickname))
+    setNicknames(map)
 
     const { data: pend } = await supabase
       .from('friend_requests')
@@ -121,6 +132,30 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
     load()
   }
 
+  const openNicknameModal = (friendId: string, friendName: string) => {
+    setNicknameInput(nicknames.get(friendId) ?? '')
+    setNicknameModal({ friendId, friendName })
+  }
+
+  const saveNickname = async () => {
+    if (!nicknameModal) return
+    const trimmed = nicknameInput.trim()
+    if (!trimmed) { await removeNickname(nicknameModal.friendId); return }
+    await supabase.from('friend_nicknames').upsert(
+      { user_id: currentUserId, friend_id: nicknameModal.friendId, nickname: trimmed },
+      { onConflict: 'user_id,friend_id' }
+    )
+    setNicknames(prev => new Map(prev).set(nicknameModal.friendId, trimmed))
+    setNicknameModal(null)
+  }
+
+  const removeNickname = async (friendId: string) => {
+    await supabase.from('friend_nicknames').delete()
+      .eq('user_id', currentUserId).eq('friend_id', friendId)
+    setNicknames(prev => { const m = new Map(prev); m.delete(friendId); return m })
+    setNicknameModal(null)
+  }
+
   const sendRequest = async () => {
     setAddStatus(null)
     const match = addInput.trim().match(/^(.+)#(\d{4})$/)
@@ -171,12 +206,56 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
 
   return (
     <div className="flex flex-col h-full" onContextMenu={e => e.preventDefault()}>
+      {/* Nickname modal */}
+      {nicknameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={e => { if (e.target === e.currentTarget) setNicknameModal(null) }}>
+          <div className="bg-[#2b2d31] rounded-xl shadow-2xl w-[360px] p-6">
+            <h2 className="text-lg font-bold text-[#dbdee1] mb-1">
+              {nicknames.has(nicknameModal.friendId) ? 'Edit Nickname' : 'Add Nickname'}
+            </h2>
+            <p className="text-sm text-[#949ba4] mb-4">for <span className="text-[#dbdee1]">{nicknameModal.friendName}</span></p>
+            <input
+              autoFocus
+              type="text"
+              value={nicknameInput}
+              onChange={e => setNicknameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveNickname(); if (e.key === 'Escape') setNicknameModal(null) }}
+              placeholder="Enter a nickname…"
+              maxLength={32}
+              className="w-full bg-[#1e1f22] text-[#dbdee1] rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5865f2] mb-4"
+            />
+            <div className="flex items-center gap-2 justify-end">
+              {nicknames.has(nicknameModal.friendId) && (
+                <button
+                  onClick={() => removeNickname(nicknameModal.friendId)}
+                  className="text-sm text-red-400 hover:text-red-300 mr-auto transition-colors"
+                >
+                  Remove Nickname
+                </button>
+              )}
+              <button onClick={() => setNicknameModal(null)} className="px-4 py-1.5 rounded-lg text-sm text-[#949ba4] hover:text-[#dbdee1] transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveNickname} className="px-4 py-1.5 rounded-lg text-sm bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium transition-colors">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x} y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
           items={[
             { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
+            ...(ctxMenu.requestId ? [{
+              label: nicknames.has(ctxMenu.userId) ? 'Edit Nickname' : 'Add Nickname',
+              onClick: () => {
+                const friend = friends.find(f => f.profile.id === ctxMenu.userId)
+                openNicknameModal(ctxMenu.userId, displayName(friend?.profile))
+              },
+            }] : []),
             ...(ctxMenu.requestId
               ? [{ label: 'Remove Friend', danger: true, onClick: () => removeFriend(ctxMenu.requestId!, ctxMenu.userId) }]
               : []),
@@ -231,7 +310,12 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                         : (profile.display_name || profile.username).charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-[#dbdee1] text-sm">{displayName(profile)}</p>
+                      <p className="font-semibold text-[#dbdee1] text-sm">
+                        {nicknames.get(profile.id) ?? displayName(profile)}
+                      </p>
+                      {nicknames.has(profile.id) && (
+                        <p className="text-[11px] text-[#4e5058] truncate">{displayName(profile)}</p>
+                      )}
                       <p className="text-xs" style={{ color: STATUS_META[getStatus(profile.id)].color }}>
                         ● {STATUS_META[getStatus(profile.id)].label}
                       </p>
