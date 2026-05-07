@@ -19,6 +19,7 @@ interface GroupCallCtx {
   gcGroupId: string | null
   gcGroupName: string | null
   gcMuted: boolean
+  gcPeerMuted: Record<string, boolean>
   startGroupCall: (groupId: string, groupName: string) => Promise<void>
   joinGroupCall: (callId: string, groupId: string, groupName: string) => Promise<void>
   leaveGroupCall: () => Promise<void>
@@ -30,6 +31,7 @@ const GroupCallContext = createContext<GroupCallCtx>({
   gcGroupId: null,
   gcGroupName: null,
   gcMuted: false,
+  gcPeerMuted: {},
   startGroupCall: async () => {},
   joinGroupCall: async () => {},
   leaveGroupCall: async () => {},
@@ -53,6 +55,8 @@ export default function GroupCallProvider({ userId, children }: { userId: string
   const [gcGroupId, setGcGroupId]     = useState<string | null>(null)
   const [gcGroupName, setGcGroupName] = useState<string | null>(null)
   const [gcMuted, setGcMuted]         = useState(false)
+  const [gcPeerMuted, setGcPeerMuted] = useState<Record<string, boolean>>({})
+  const gcMutedRef = useRef(false)
 
   // incoming ring state
   const [gcRinging, setGcRinging]           = useState(false)
@@ -363,6 +367,14 @@ export default function GroupCallProvider({ userId, children }: { userId: string
       localIceBuffers.current.delete(fromId)
       remoteIceBuffers.current.delete(fromId)
       liveIcePeers.current.delete(fromId)
+      setGcPeerMuted(prev => { const next = { ...prev }; delete next[fromId]; return next })
+    })
+
+    // ── mute_state: someone toggled mute ──
+    ch.on('broadcast', { event: 'mute_state' }, ({ payload }) => {
+      const fromId: string = payload.from
+      if (fromId === userId) return
+      setGcPeerMuted(prev => ({ ...prev, [fromId]: payload.muted }))
     })
 
     // 6. Subscribe — once subscribed, broadcast join and update state
@@ -371,6 +383,11 @@ export default function GroupCallProvider({ userId, children }: { userId: string
         ch.send({
           type: 'broadcast', event: 'join',
           payload: { from: userId, profile: ownProfile },
+        })
+        // Let existing participants know our mute state
+        ch.send({
+          type: 'broadcast', event: 'mute_state',
+          payload: { from: userId, muted: gcMutedRef.current },
         })
         setGcInCall(true)
         setGcGroupId(groupId)
@@ -500,10 +517,12 @@ export default function GroupCallProvider({ userId, children }: { userId: string
 
     gcCallIdRef.current  = null
     gcGroupIdRef.current = null
+    gcMutedRef.current   = false
     setGcInCall(false)
     setGcGroupId(null)
     setGcGroupName(null)
     setGcMuted(false)
+    setGcPeerMuted({})
   }
 
   // ─── acceptGroupCall ─────────────────────────────────────────────────────────
@@ -534,8 +553,14 @@ export default function GroupCallProvider({ userId, children }: { userId: string
 
   // ─── toggleGcMute ───────────────────────────────────────────────────────────
   const toggleGcMute = () => {
-    gcLocal.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled })
-    setGcMuted(v => !v)
+    const newMuted = !gcMutedRef.current
+    gcMutedRef.current = newMuted
+    gcLocal.current?.getAudioTracks().forEach(t => { t.enabled = !newMuted })
+    setGcMuted(newMuted)
+    gcChannel.current?.send({
+      type: 'broadcast', event: 'mute_state',
+      payload: { from: userId, muted: newMuted },
+    })
   }
 
   // ─── beforeunload cleanup ────────────────────────────────────────────────────
@@ -562,7 +587,7 @@ export default function GroupCallProvider({ userId, children }: { userId: string
 
   return (
     <GroupCallContext.Provider value={{
-      gcInCall, gcGroupId, gcGroupName, gcMuted,
+      gcInCall, gcGroupId, gcGroupName, gcMuted, gcPeerMuted,
       startGroupCall, joinGroupCall, leaveGroupCall, toggleGcMute,
     }}>
       {children}

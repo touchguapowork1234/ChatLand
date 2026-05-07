@@ -23,7 +23,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024
 export default function GroupArea({ group: initialGroup, initialMessages, initialMembers, currentUserId }: Props) {
   const supabase = createClient()
   const { openProfile } = useProfileCard()
-  const { gcGroupId, gcMuted, startGroupCall, joinGroupCall, leaveGroupCall, toggleGcMute } = useGroupCall()
+  const { gcGroupId, gcMuted, gcPeerMuted, startGroupCall, joinGroupCall, leaveGroupCall, toggleGcMute } = useGroupCall()
   const [group, setGroup]       = useState(initialGroup)
   const [messages, setMessages] = useState<GroupMessage[]>(initialMessages)
   const [members, setMembers]   = useState<GroupMember[]>(initialMembers)
@@ -536,23 +536,25 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
           </div>
           {callParticipants.length > 0 && (
             <div className="flex gap-5 flex-wrap">
-              {callParticipants.map(p => (
-                <div key={p.id} className="flex flex-col items-center gap-1.5">
-                  <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold bg-[#383a40] ring-2 ${
-                    p.user_id === currentUserId && gcMuted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'
-                  }`}>
-                    {p.profiles?.avatar_url
-                      ? <img src={p.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : (p.profiles?.display_name || p.profiles?.username || '?').charAt(0).toUpperCase()}
+              {callParticipants.map(p => {
+                const isSelf = p.user_id === currentUserId
+                const muted  = isSelf ? gcMuted : (gcPeerMuted[p.user_id] ?? false)
+                return (
+                  <div key={p.id} className="flex flex-col items-center gap-1.5">
+                    <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-white text-sm font-bold bg-[#383a40] ring-2 ${
+                      muted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'
+                    }`}>
+                      {p.profiles?.avatar_url
+                        ? <img src={p.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                        : (p.profiles?.display_name || p.profiles?.username || '?').charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-[10px] text-[#dbdee1] font-medium max-w-[52px] truncate text-center">
+                      {isSelf ? 'You' : displayName(p.profiles)}
+                    </span>
+                    {muted && <MicOff className="w-3 h-3 text-red-400 -mt-0.5" />}
                   </div>
-                  <span className="text-[10px] text-[#dbdee1] font-medium max-w-[52px] truncate text-center">
-                    {p.user_id === currentUserId ? 'You' : displayName(p.profiles)}
-                  </span>
-                  {p.user_id === currentUserId && gcMuted && (
-                    <MicOff className="w-3 h-3 text-red-400 -mt-0.5" />
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

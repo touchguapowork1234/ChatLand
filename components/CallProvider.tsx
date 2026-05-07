@@ -13,6 +13,7 @@ interface CallCtx {
   callingUserId: string | null
   incomingCallerId: string | null
   isMuted: boolean
+  partnerMuted: boolean
   duration: number
   startCall: (receiverId: string, receiverProfile: Profile) => Promise<void>
   endCall: () => Promise<void>
@@ -25,7 +26,7 @@ interface CallCtx {
 
 const CallContext = createContext<CallCtx>({
   callState: 'idle', callingUserId: null, incomingCallerId: null,
-  isMuted: false, duration: 0,
+  isMuted: false, partnerMuted: false, duration: 0,
   startCall: async () => {}, endCall: async () => {}, leaveCall: async () => {},
   rejoinCall: async () => {}, acceptCall: async () => {}, declineCall: async () => {},
   toggleMute: () => {},
@@ -52,6 +53,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   const [incomingData, setIncomingData]          = useState<{ call: Call; caller: Profile } | null>(null)
   const [showModal, setShowModal]                = useState(false)
   const [isMuted, setIsMuted]                    = useState(false)
+  const [partnerMuted, setPartnerMuted]          = useState(false)
   const [duration, setDuration]                  = useState(0)
 
   const pcRef             = useRef<RTCPeerConnection | null>(null)
@@ -65,6 +67,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null)
   const subsRef    = useRef<ReturnType<typeof supabase.channel>[]>([])
   const callStateRef = useRef<CallState>('idle')
+  const isMutedRef   = useRef(false)
 
   const setCallState = (s: CallState) => {
     callStateRef.current = s
@@ -105,11 +108,13 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     callIdRef.current = null
     receiverIdRef.current = null
     incomingCallIdRef.current = null
+    isMutedRef.current = false
     setCallState('idle')
     setOtherUser(null)
     setCallingUserId(null)
     setIncomingCallerId(null)
     setIsMuted(false)
+    setPartnerMuted(false)
     setDuration(0)
   }
 
@@ -161,6 +166,18 @@ export default function CallProvider({ userId, children }: { userId: string; chi
 
     return () => { supabase.removeChannel(ch) }
   }, [userId])
+
+  // ── Mute state broadcast ──
+  const broadcastMute = (muted: boolean) => {
+    sigRef.current?.send({
+      type: 'broadcast', event: 'mute_state',
+      payload: { from: userId, muted },
+    })
+  }
+
+  const muteHandler = ({ payload }: { payload: { from: string; muted: boolean } }) => {
+    if (payload.from !== userId) setPartnerMuted(payload.muted)
+  }
 
   // ── Caller ──
   const startCall = async (receiverId: string, receiverProfile: Profile) => {
@@ -223,15 +240,15 @@ export default function CallProvider({ userId, children }: { userId: string; chi
           if (payload.from !== userId)
             pcRef.current?.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {})
         })
+        .on('broadcast', { event: 'mute_state' }, muteHandler)
         .on('broadcast', { event: 'end' }, () => cleanup())
         .on('broadcast', { event: 'decline' }, () => cleanup())
-        // Partner disconnected — stay alone, don't end the call
         .on('broadcast', { event: 'leave' }, () => {
           pcRef.current?.close(); pcRef.current = null
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+          setPartnerMuted(false)
           setCallState('alone')
         })
-        // Partner is rejoining — re-handshake: we send a new offer
         .on('broadcast', { event: 'rejoin_offer' }, async ({ payload }) => {
           if (callStateRef.current !== 'alone') return
           try {
@@ -252,6 +269,8 @@ export default function CallProvider({ userId, children }: { userId: string; chi
             pc.onicecandidate = ({ candidate }) => {
               if (candidate) sig.send({ type: 'broadcast', event: 'ice', payload: { candidate: candidate.toJSON(), from: userId } })
             }
+            // Let rejoiner know our current mute state
+            broadcastMute(isMutedRef.current)
             setCallState('active')
             startTimer()
           } catch { cleanup() }
@@ -304,14 +323,14 @@ export default function CallProvider({ userId, children }: { userId: string; chi
           if (payload.from !== userId)
             pcRef.current?.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {})
         })
+        .on('broadcast', { event: 'mute_state' }, muteHandler)
         .on('broadcast', { event: 'end' }, () => cleanup())
-        // Partner disconnected — stay alone
         .on('broadcast', { event: 'leave' }, () => {
           pcRef.current?.close(); pcRef.current = null
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+          setPartnerMuted(false)
           setCallState('alone')
         })
-        // Partner is rejoining — re-handshake: we answer their offer
         .on('broadcast', { event: 'rejoin_offer' }, async ({ payload }) => {
           if (callStateRef.current !== 'alone') return
           try {
@@ -332,6 +351,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
             pc.onicecandidate = ({ candidate }) => {
               if (candidate) sig.send({ type: 'broadcast', event: 'ice', payload: { candidate: candidate.toJSON(), from: userId } })
             }
+            broadcastMute(isMutedRef.current)
             setCallState('active')
             startTimer()
           } catch { cleanup() }
@@ -366,7 +386,6 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     setCallState('idle')
   }
 
-  // Fully end the call for both sides (used when alone or to terminate outright)
   const endCall = async () => {
     const cid = callIdRef.current
     const rid = receiverIdRef.current
@@ -388,7 +407,6 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     cleanup()
   }
 
-  // Leave without ending — partner stays connected and can wait for rejoin
   const leaveCall = async () => {
     sigRef.current?.send({ type: 'broadcast', event: 'leave', payload: {} })
     localRef.current?.getTracks().forEach(t => t.stop())
@@ -396,19 +414,19 @@ export default function CallProvider({ userId, children }: { userId: string; chi
     pcRef.current?.close()
     pcRef.current = null
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
-    // Keep signal channel ref alive so DB isn't marked ended; just remove our sub
     removeSubs()
     callIdRef.current = null
     receiverIdRef.current = null
+    isMutedRef.current = false
     setCallState('idle')
     setOtherUser(null)
     setCallingUserId(null)
     setIncomingCallerId(null)
     setIsMuted(false)
+    setPartnerMuted(false)
     setDuration(0)
   }
 
-  // Rejoin an existing active call (call stayed open after we left)
   const rejoinCall = async (callId: string, otherProfile: Profile) => {
     if (callState !== 'idle') return
     setCallState('calling')
@@ -438,6 +456,8 @@ export default function CallProvider({ userId, children }: { userId: string; chi
           pc.onicecandidate = ({ candidate }) => {
             if (candidate) sig.send({ type: 'broadcast', event: 'ice', payload: { candidate: candidate.toJSON(), from: userId } })
           }
+          // Send our mute state so partner's indicator is accurate
+          broadcastMute(isMutedRef.current)
           setCallState('active')
           startTimer()
         })
@@ -445,15 +465,16 @@ export default function CallProvider({ userId, children }: { userId: string; chi
           if (payload.from !== userId)
             pc.addIceCandidate(new RTCIceCandidate(payload.candidate)).catch(() => {})
         })
+        .on('broadcast', { event: 'mute_state' }, muteHandler)
         .on('broadcast', { event: 'end' }, () => cleanup())
         .on('broadcast', { event: 'leave' }, () => {
           pcRef.current?.close(); pcRef.current = null
           if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null }
+          setPartnerMuted(false)
           setCallState('alone')
         })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
-            // Send our offer so the waiting partner can answer
             const offer = await pc.createOffer()
             await pc.setLocalDescription(offer)
             sig.send({ type: 'broadcast', event: 'rejoin_offer', payload: { sdp: offer.sdp, type: offer.type } })
@@ -463,15 +484,18 @@ export default function CallProvider({ userId, children }: { userId: string; chi
   }
 
   const toggleMute = () => {
-    localRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled })
-    setIsMuted(v => !v)
+    const newMuted = !isMutedRef.current
+    isMutedRef.current = newMuted
+    localRef.current?.getAudioTracks().forEach(t => { t.enabled = !newMuted })
+    setIsMuted(newMuted)
+    broadcastMute(newMuted)
   }
 
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
 
   return (
     <CallContext.Provider value={{
-      callState, callingUserId, incomingCallerId, isMuted, duration,
+      callState, callingUserId, incomingCallerId, isMuted, partnerMuted, duration,
       startCall, endCall, leaveCall, rejoinCall, acceptCall, declineCall, toggleMute,
     }}>
       {children}
@@ -506,7 +530,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
         </div>
       )}
 
-      {/* Floating overlay — shown when navigated away from the DM */}
+      {/* Floating overlay */}
       {(callState === 'calling' || callState === 'active' || callState === 'alone') && otherUser && (
         <div className="fixed bottom-6 right-6 bg-[#232428] border border-[#3f4147] rounded-2xl p-4 shadow-2xl z-40 w-64">
           <div className="flex items-center gap-3 mb-3">
@@ -523,16 +547,11 @@ export default function CallProvider({ userId, children }: { userId: string; chi
                   : fmt(duration)}
               </p>
             </div>
-            {callState === 'active' && (
-              <div className="ml-auto w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
-            )}
-            {callState === 'alone' && (
-              <div className="ml-auto w-2 h-2 rounded-full bg-[#f0b132] animate-pulse shrink-0" />
-            )}
+            {callState === 'active' && <div className="w-2 h-2 rounded-full bg-[#23a55a] animate-pulse shrink-0" />}
+            {callState === 'alone'  && <div className="w-2 h-2 rounded-full bg-[#f0b132] animate-pulse shrink-0" />}
           </div>
 
           {callState === 'alone' ? (
-            // Alone: only End button (fully terminate the call)
             <div className="flex justify-center">
               <button onClick={endCall}
                 className="px-4 py-2 rounded-lg text-xs font-medium bg-red-500 hover:bg-red-600 text-white flex items-center gap-1.5 transition-colors">

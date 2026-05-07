@@ -22,7 +22,7 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024
 
 export default function DMArea({ dmId, otherUser, currentUserId, initialMessages, initialCalls }: Props) {
   const supabase = createClient()
-  const { callState, callingUserId, incomingCallerId, isMuted, duration,
+  const { callState, callingUserId, incomingCallerId, isMuted, partnerMuted, duration,
           startCall, endCall, leaveCall, rejoinCall, acceptCall, declineCall, toggleMute } = useCall()
   const { openProfile } = useProfileCard()
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
@@ -448,12 +448,13 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               {isMuted && <MicOff className="w-3 h-3 text-red-400 -mt-0.5" />}
             </div>
             <div className="flex flex-col items-center gap-1.5">
-              <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ring-[#23a55a]/70">
+              <div className={`w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ${partnerMuted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'}`}>
                 {otherUser.avatar_url
                   ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
                   : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
               </div>
               <span className="text-[11px] text-[#dbdee1] font-medium text-center max-w-[72px] truncate">{displayName(otherUser)}</span>
+              {partnerMuted && <MicOff className="w-3 h-3 text-red-400 -mt-0.5" />}
             </div>
           </div>
           <div className="flex justify-center gap-3">
@@ -471,17 +472,27 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         </div>
       )}
 
-      {/* Alone — partner left, waiting for them to rejoin */}
+      {/* Alone — partner left, show their avatar dimmed + End button */}
       {isAloneThis && (
         <div className="bg-[#1e1f22] border-b border-[#111214] shrink-0 px-6 pt-4 pb-3">
-          <div className="flex items-center justify-center gap-1.5 mb-4">
+          <div className="flex items-center justify-center gap-1.5 mb-3">
             <div className="w-1.5 h-1.5 rounded-full bg-[#f0b132] animate-pulse" />
             <span className="text-xs font-semibold text-[#f0b132] uppercase tracking-wide">
               Waiting for {displayName(otherUser)} to rejoin…
             </span>
           </div>
+          <div className="flex justify-center mb-3">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] opacity-50 ring-2 ring-[#4e5058]/50">
+                {otherUser.avatar_url
+                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[11px] text-[#6d6f78] font-medium max-w-[72px] truncate text-center">{displayName(otherUser)}</span>
+            </div>
+          </div>
           <div className="flex justify-center">
-            <button onClick={endCall} title="End call for both"
+            <button onClick={endCall}
               className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-colors">
               <PhoneOff className="w-3.5 h-3.5" />End Call
             </button>
@@ -489,17 +500,29 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         </div>
       )}
 
-      {/* Rejoin — we left but the call is still active */}
+      {/* Rejoin — we left, partner still in call — show their avatar + Join button */}
       {rejoinableCall && (
-        <div className="flex items-center gap-3 px-4 py-2.5 bg-[#1a3a2a] border-b border-[#23a55a]/30 shrink-0">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#23a55a] animate-pulse shrink-0" />
-          <span className="text-[#23a55a] text-sm font-medium flex-1">
-            {displayName(otherUser)} is still in the call
-          </span>
-          <button onClick={() => rejoinCall(rejoinableCall.id, otherUser)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-semibold transition-colors">
-            <Phone className="w-3.5 h-3.5" />Rejoin
-          </button>
+        <div className="bg-[#1e1f22] border-b border-[#111214] shrink-0 px-6 pt-4 pb-3">
+          <div className="flex items-center justify-center gap-1.5 mb-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#23a55a] animate-pulse" />
+            <span className="text-xs font-semibold text-[#23a55a] uppercase tracking-wide">Ongoing Call</span>
+          </div>
+          <div className="flex justify-center mb-3">
+            <div className="flex flex-col items-center gap-1.5">
+              <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ring-[#23a55a]/70">
+                {otherUser.avatar_url
+                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
+              </div>
+              <span className="text-[11px] text-[#dbdee1] font-medium max-w-[72px] truncate text-center">{displayName(otherUser)}</span>
+            </div>
+          </div>
+          <div className="flex justify-center">
+            <button onClick={() => rejoinCall(rejoinableCall.id, otherUser)}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#23a55a] hover:bg-[#1e8f4e] text-white text-xs font-semibold transition-colors">
+              <Phone className="w-3.5 h-3.5" />Join
+            </button>
+          </div>
         </div>
       )}
 
