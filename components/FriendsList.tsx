@@ -23,11 +23,12 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
   const { startCall } = useCall()
 
   const { openProfile } = useProfileCard()
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string; requestId?: string } | null>(null)
   const [tab, setTab] = useState<Tab>('friends')
   const [friends, setFriends] = useState<Friend[]>([])
   const [incoming, setIncoming] = useState<FriendRequest[]>([])
   const [outgoing, setOutgoing] = useState<FriendRequest[]>([])
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [addInput, setAddInput] = useState('')
   const [addStatus, setAddStatus] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -56,8 +57,15 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
     setOutgoing((pend ?? []).filter(r => r.sender_id === currentUserId) as FriendRequest[])
   }
 
+  const loadBlocks = async () => {
+    const { data } = await supabase
+      .from('blocks').select('blocked_id').eq('blocker_id', currentUserId)
+    setBlockedIds(new Set((data ?? []).map((b: { blocked_id: string }) => b.blocked_id)))
+  }
+
   useEffect(() => {
     load()
+    loadBlocks()
 
     const channel = supabase.channel('friends-list')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, load)
@@ -65,6 +73,27 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
 
     return () => { supabase.removeChannel(channel) }
   }, [currentUserId])
+
+  const removeFriend = async (requestId: string) => {
+    await supabase.from('friend_requests').delete().eq('id', requestId)
+    setFriends(prev => prev.filter(f => f.requestId !== requestId))
+  }
+
+  const blockUser = async (userId: string) => {
+    await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: userId })
+    setBlockedIds(prev => new Set([...prev, userId]))
+    // Also remove friendship so they can't add to groups
+    const friend = friends.find(f => f.profile.id === userId)
+    if (friend) {
+      await supabase.from('friend_requests').delete().eq('id', friend.requestId)
+      setFriends(prev => prev.filter(f => f.profile.id !== userId))
+    }
+  }
+
+  const unblockUser = async (userId: string) => {
+    await supabase.from('blocks').delete().eq('blocker_id', currentUserId).eq('blocked_id', userId)
+    setBlockedIds(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
 
   const openDM = async (otherId: string) => {
     const [u1, u2] = [currentUserId, otherId].sort()
@@ -145,7 +174,15 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
         <ContextMenu
           x={ctxMenu.x} y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
-          items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+          items={[
+            { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
+            ...(ctxMenu.requestId
+              ? [{ label: 'Remove Friend', danger: true, onClick: () => removeFriend(ctxMenu.requestId!) }]
+              : []),
+            blockedIds.has(ctxMenu.userId)
+              ? { label: 'Unblock', onClick: () => unblockUser(ctxMenu.userId) }
+              : { label: 'Block', danger: true, onClick: () => blockUser(ctxMenu.userId) },
+          ]}
         />
       )}
       <div className="h-12 px-4 flex items-center gap-4 border-b border-[#1e1f22] shrink-0 shadow-sm">
@@ -185,7 +222,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                 </p>
                 {friends.map(({ requestId, profile }) => (
                   <div key={requestId}
-                    onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, userId: profile.id }) }}
+                    onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, userId: profile.id, requestId }) }}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] group transition-colors">
                     <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                       {profile.avatar_url

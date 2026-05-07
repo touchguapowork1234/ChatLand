@@ -31,6 +31,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [dms, setDms]           = useState<DmEntry[]>([])
   const [groups, setGroups]     = useState<GroupChat[]>([])
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
   const [newChannelName, setNewChannelName] = useState('')
   const [showNewChannel, setShowNewChannel] = useState(false)
   const [copied, setCopied]     = useState(false)
@@ -45,6 +46,23 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
       if (stored) setHiddenIds(new Set(JSON.parse(stored)))
     } catch {}
   }, [profile.id])
+
+  // Load blocked user IDs
+  useEffect(() => {
+    if (serverId) return
+    supabase.from('blocks').select('blocked_id').eq('blocker_id', profile.id)
+      .then(({ data }) => setBlockedIds(new Set((data ?? []).map((b: { blocked_id: string }) => b.blocked_id))))
+  }, [profile.id, serverId])
+
+  const blockDMUser = async (userId: string) => {
+    await supabase.from('blocks').insert({ blocker_id: profile.id, blocked_id: userId })
+    setBlockedIds(prev => new Set([...prev, userId]))
+  }
+
+  const unblockDMUser = async (userId: string) => {
+    await supabase.from('blocks').delete().eq('blocker_id', profile.id).eq('blocked_id', userId)
+    setBlockedIds(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
 
   const saveHidden = (next: Set<string>) => {
     setHiddenIds(next)
@@ -173,7 +191,12 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
           <ContextMenu
             x={ctxMenu.x} y={ctxMenu.y}
             onClose={() => setCtxMenu(null)}
-            items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+            items={[
+              { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
+              blockedIds.has(ctxMenu.userId)
+                ? { label: 'Unblock', onClick: () => unblockDMUser(ctxMenu.userId) }
+                : { label: 'Block', danger: true, onClick: () => blockDMUser(ctxMenu.userId) },
+            ]}
           />
         )}
         {groupCtxMenu && (

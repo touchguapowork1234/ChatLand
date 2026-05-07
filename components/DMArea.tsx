@@ -29,6 +29,8 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages)
   const [calls, setCalls]       = useState<Call[]>(initialCalls)
+  const [blockStatus, setBlockStatus] = useState({ iBlockedThem: false, theyBlockedMe: false })
+  const isBlocked = blockStatus.iBlockedThem || blockStatus.theyBlockedMe
   const [content, setContent]   = useState('')
   const [sending, setSending]   = useState(false)
   const [editing, setEditing]       = useState<string | null>(null)
@@ -125,6 +127,28 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [timeline.length])
 
   useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from('blocks').select('blocker_id, blocked_id')
+        .or(`and(blocker_id.eq.${currentUserId},blocked_id.eq.${otherUser.id}),and(blocker_id.eq.${otherUser.id},blocked_id.eq.${currentUserId})`)
+      setBlockStatus({
+        iBlockedThem: (data ?? []).some((b: { blocker_id: string }) => b.blocker_id === currentUserId),
+        theyBlockedMe: (data ?? []).some((b: { blocker_id: string }) => b.blocker_id === otherUser.id),
+      })
+    }
+    load()
+  }, [dmId, currentUserId, otherUser.id])
+
+  const blockOtherUser = async () => {
+    await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: otherUser.id })
+    setBlockStatus(s => ({ ...s, iBlockedThem: true }))
+  }
+
+  const unblockOtherUser = async () => {
+    await supabase.from('blocks').delete().eq('blocker_id', currentUserId).eq('blocked_id', otherUser.id)
+    setBlockStatus(s => ({ ...s, iBlockedThem: false }))
+  }
+
+  useEffect(() => {
     const ch = supabase.channel(`dm_${dmId}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'dm_messages',
@@ -173,6 +197,29 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const send = async () => {
     const trimmed = content.trim()
     if (!trimmed && !pendingFile || sending || uploading) return
+
+    if (isBlocked) {
+      if (trimmed) {
+        setMessages(prev => [...prev, {
+          id: `failed_${Date.now()}`,
+          dm_id: dmId,
+          sender_id: currentUserId,
+          content: trimmed,
+          created_at: new Date().toISOString(),
+          updated_at: null,
+          reply_to_id: null,
+          file_url: null,
+          file_name: null,
+          file_type: null,
+          failed: true,
+        }])
+      }
+      setContent('')
+      setPendingFile(null)
+      setReplyTo(null)
+      return
+    }
+
     setSending(true)
 
     let fileFields: { file_url?: string; file_name?: string; file_type?: string } = {}
@@ -251,7 +298,14 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         <ContextMenu
           x={ctxMenu.x} y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
-          items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+          items={[
+            { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
+            ...(ctxMenu.userId !== currentUserId ? [
+              blockStatus.iBlockedThem
+                ? { label: 'Unblock', onClick: unblockOtherUser }
+                : { label: 'Block', danger: true, onClick: blockOtherUser },
+            ] : []),
+          ]}
         />
       )}
 
@@ -368,6 +422,19 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           }
 
           const msg = item.data as DmMessage
+
+          if (msg.failed) {
+            return (
+              <div key={msg.id} className="flex items-start gap-4 px-2 py-0.5 mt-2 opacity-80">
+                <div className="w-10 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-red-400 text-sm break-words line-through">{msg.content}</p>
+                  <span className="text-[10px] text-red-500/80">✗ Message not delivered</span>
+                </div>
+              </div>
+            )
+          }
+
           const prevItem = timeline[i - 1]
           const prevMsg = prevItem?.type === 'message' ? prevItem.data as DmMessage : null
           const grouped = !!prevMsg && prevMsg.sender_id === msg.sender_id &&
@@ -474,6 +541,13 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
       {/* Input area */}
       <div className="px-4 pb-6 pt-2 shrink-0">
+        {isBlocked && (
+          <p className="text-red-400/80 text-xs mb-1.5 px-1">
+            {blockStatus.iBlockedThem
+              ? 'You have blocked this user — messages will not be delivered.'
+              : 'You cannot send messages to this user.'}
+          </p>
+        )}
         {fileError && (
           <p className="text-red-400 text-xs mb-1 px-1">{fileError}</p>
         )}

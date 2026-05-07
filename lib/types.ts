@@ -80,6 +80,14 @@ export type DmMessage = {
   file_name: string | null
   file_type: string | null
   profiles?: Profile
+  failed?: boolean   // local-only flag for blocked send attempts
+}
+
+export type Block = {
+  id: string
+  blocker_id: string
+  blocked_id: string
+  created_at: string
 }
 
 export type GroupChat = {
