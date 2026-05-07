@@ -9,14 +9,8 @@ interface Props {
   onClick?: () => void
 }
 
-// Scale factor: decoration image is designed so the face area ≈ 62% of image width.
-// Inverting that keeps the avatar circle perfectly inscribed inside the decoration.
-const SCALE = 1.62
-
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
   const dec = decorationById(decoration)
-  const decSize = Math.round(size * SCALE)
-  const offset  = Math.round((decSize - size) / 2)
 
   return (
     <div
@@ -34,7 +28,7 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           : displayInitial}
       </div>
 
-      {/* Decoration overlay — sits outside the overflow-hidden circle */}
+      {/* Decoration overlay — same size as avatar, no scaling, sits on border */}
       {dec && (
         <img
           src={dec.src}
@@ -42,10 +36,10 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
           draggable={false}
           className="absolute pointer-events-none select-none"
           style={{
-            width:  decSize,
-            height: decSize,
-            top:    -offset,
-            left:   -offset,
+            width:  size,
+            height: size,
+            top:    0,
+            left:   0,
             zIndex: 10,
           }}
         />

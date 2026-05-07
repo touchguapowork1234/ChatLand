@@ -854,7 +854,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                 alt={dec.label}
                                 draggable={false}
                                 className="absolute pointer-events-none select-none"
-                                style={{ width: 78, height: 78, top: -15, left: -15 }}
+                                style={{ width: 48, height: 48, top: 0, left: 0 }}
                               />
                             </div>
                             <p className={`text-xs font-medium text-center leading-tight ${decoration === dec.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{dec.label}</p>
