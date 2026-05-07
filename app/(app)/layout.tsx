@@ -5,6 +5,7 @@ import ChannelSidebar from '@/components/ChannelSidebar'
 import CallProvider from '@/components/CallProvider'
 import ProfileCardProvider from '@/components/ProfileCardProvider'
 import PremiumThemeProvider from '@/components/PremiumThemeProvider'
+import ThemedMain from '@/components/ThemedMain'
 import type { Server, Profile } from '@/lib/types'
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -32,9 +33,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <div className="flex h-screen overflow-hidden bg-[#1e1f22]">
             <ServerRail servers={servers} userId={user.id} />
             <ChannelSidebar profile={profile as Profile} />
-            <main className="flex-1 flex flex-col bg-[#313338] overflow-hidden min-w-0">
-              {children}
-            </main>
+            <ThemedMain>{children}</ThemedMain>
           </div>
         </ProfileCardProvider>
       </PremiumThemeProvider>
