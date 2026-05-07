@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Users, Pencil, Send, UserPlus } from 'lucide-react'
+import { Users, Pencil, Send, UserPlus, CornerUpLeft, X } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { GroupChat, GroupMember, GroupMessage, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
@@ -25,10 +25,12 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
   const [sending, setSending]   = useState(false)
   const [editing, setEditing]       = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const [replyTo, setReplyTo]   = useState<GroupMessage | null>(null)
   const [showMembers, setShowMembers] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
   const [ctxMenu, setCtxMenu]   = useState<{ x: number; y: number; userId: string } | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const inputRef  = useRef<HTMLTextAreaElement>(null)
 
   const startEdit = (msg: GroupMessage) => { setEditing(msg.id); setEditContent(msg.content) }
   const cancelEdit = () => setEditing(null)
@@ -43,6 +45,9 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
       .eq('id', msgId).eq('sender_id', currentUserId)
   }
 
+  const startReply = (msg: GroupMessage) => { setReplyTo(msg); inputRef.current?.focus() }
+  const cancelReply = () => setReplyTo(null)
+
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
 
   // Realtime new messages
@@ -53,12 +58,11 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
         filter: `group_id=eq.${group.id}`,
       }, async payload => {
         const msg = payload.new as GroupMessage
-        setMessages(prev => {
-          if (prev.find(m => m.id === msg.id)) return prev
-          supabase.from('profiles').select('*').eq('id', msg.sender_id).single().then(({ data: profile }) => {
-            setMessages(p => p.find(m => m.id === msg.id) ? p : [...p, { ...msg, profiles: profile as Profile }])
+        supabase.from('profiles').select('*').eq('id', msg.sender_id).single().then(({ data: profile }) => {
+          setMessages(prev => {
+            if (prev.find(m => m.id === msg.id)) return prev
+            return [...prev, { ...msg, profiles: profile as Profile }]
           })
-          return prev
         })
       })
       .subscribe()
@@ -88,8 +92,15 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
     if (!trimmed || sending) return
     setSending(true)
     setContent('')
+    const reply = replyTo
+    setReplyTo(null)
     const { data: newMsg } = await supabase.from('group_messages')
-      .insert({ group_id: group.id, sender_id: currentUserId, content: trimmed })
+      .insert({
+        group_id: group.id,
+        sender_id: currentUserId,
+        content: trimmed,
+        ...(reply ? { reply_to_id: reply.id } : {}),
+      })
       .select('*, profiles(*)')
       .single()
     if (newMsg) setMessages(prev =>
@@ -201,7 +212,7 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
             const newDay = !prev ||
               new Date(msg.created_at).toDateString() !== new Date(prev.created_at).toDateString()
 
-            // System messages (e.g. "user left the group")
+            // System messages
             if (msg.type === 'system') {
               return (
                 <div key={msg.id}>
@@ -222,8 +233,10 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
             }
 
             const grouped = !!prev && prev.type !== 'system' && prev.sender_id === msg.sender_id &&
-              new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60_000
+              new Date(msg.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60_000 &&
+              !msg.reply_to_id
             const isMe = msg.sender_id === currentUserId
+            const repliedMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
 
             return (
               <div key={msg.id}>
@@ -251,6 +264,15 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
+                    {repliedMsg && (
+                      <div className="flex items-center gap-2 mb-1 text-xs text-[#949ba4] cursor-default">
+                        <div className="w-0.5 h-4 bg-[#4e5058] rounded-full shrink-0" />
+                        <span className="font-semibold text-[#b5bac1] truncate max-w-[80px]">
+                          {displayName(repliedMsg.profiles)}
+                        </span>
+                        <span className="truncate">{repliedMsg.content}</span>
+                      </div>
+                    )}
                     {!grouped && (
                       <div className="flex items-baseline gap-2 mb-0.5">
                         <span className="font-semibold text-[#dbdee1] text-sm">{displayName(msg.profiles)}</span>
@@ -289,13 +311,25 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
                       </p>
                     )}
                   </div>
-                  {isMe && editing !== msg.id && (
-                    <button
-                      onClick={() => startEdit(msg)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0 self-start mt-0.5 p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
+                  {editing !== msg.id && (
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5 shrink-0 self-start mt-0.5">
+                      <button
+                        onClick={() => startReply(msg)}
+                        className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
+                        title="Reply"
+                      >
+                        <CornerUpLeft className="w-3.5 h-3.5" />
+                      </button>
+                      {isMe && (
+                        <button
+                          onClick={() => startEdit(msg)}
+                          className="p-1 rounded text-[#949ba4] hover:text-[#dbdee1] hover:bg-[#383a40]"
+                          title="Edit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -344,8 +378,19 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
 
       {/* Input */}
       <div className="px-4 pb-6 pt-2 shrink-0">
-        <div className="bg-[#383a40] rounded-lg flex items-end gap-2 px-4 py-2.5">
+        {replyTo && (
+          <div className="flex items-center gap-2 px-3 py-1.5 mb-1 bg-[#2e3035] rounded-t-lg text-xs text-[#949ba4]">
+            <CornerUpLeft className="w-3 h-3 shrink-0" />
+            <span>Replying to <span className="font-semibold text-[#b5bac1]">{displayName(replyTo.profiles)}</span></span>
+            <span className="flex-1 truncate text-[#6d6f78]">{replyTo.content}</span>
+            <button onClick={cancelReply} className="p-0.5 rounded hover:text-[#dbdee1] hover:bg-[#383a40]">
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+        <div className={`bg-[#383a40] flex items-end gap-2 px-4 py-2.5 ${replyTo ? 'rounded-b-lg' : 'rounded-lg'}`}>
           <textarea
+            ref={inputRef}
             value={content}
             onChange={e => {
               setContent(e.target.value)
