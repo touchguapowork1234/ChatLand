@@ -155,8 +155,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   }
 
   const removeFriend = async () => {
-    await supabase.from('friend_requests').delete().eq('status', 'accepted')
-      .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUser.id}),and(sender_id.eq.${otherUser.id},receiver_id.eq.${currentUserId})`)
+    await supabase.rpc('remove_friend', { friend_user_id: otherUser.id })
     setIsFriend(false)
   }
 

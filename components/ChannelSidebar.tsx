@@ -72,8 +72,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   }
 
   const removeDMFriend = async (userId: string) => {
-    await supabase.from('friend_requests').delete().eq('status', 'accepted')
-      .or(`and(sender_id.eq.${profile.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${profile.id})`)
+    await supabase.rpc('remove_friend', { friend_user_id: userId })
     setFriendIds(prev => { const next = new Set(prev); next.delete(userId); return next })
   }
 

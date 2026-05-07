@@ -74,8 +74,8 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
     return () => { supabase.removeChannel(channel) }
   }, [currentUserId])
 
-  const removeFriend = async (requestId: string) => {
-    await supabase.from('friend_requests').delete().eq('id', requestId)
+  const removeFriend = async (requestId: string, userId: string) => {
+    await supabase.rpc('remove_friend', { friend_user_id: userId })
     setFriends(prev => prev.filter(f => f.requestId !== requestId))
   }
 
@@ -83,9 +83,8 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
     await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: userId })
     setBlockedIds(prev => new Set([...prev, userId]))
     // Also remove friendship so they can't add to groups
-    const friend = friends.find(f => f.profile.id === userId)
-    if (friend) {
-      await supabase.from('friend_requests').delete().eq('id', friend.requestId)
+    if (friends.some(f => f.profile.id === userId)) {
+      await supabase.rpc('remove_friend', { friend_user_id: userId })
       setFriends(prev => prev.filter(f => f.profile.id !== userId))
     }
   }
@@ -177,7 +176,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
           items={[
             { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
             ...(ctxMenu.requestId
-              ? [{ label: 'Remove Friend', danger: true, onClick: () => removeFriend(ctxMenu.requestId!) }]
+              ? [{ label: 'Remove Friend', danger: true, onClick: () => removeFriend(ctxMenu.requestId!, ctxMenu.userId) }]
               : []),
             blockedIds.has(ctxMenu.userId)
               ? { label: 'Unblock', onClick: () => unblockUser(ctxMenu.userId) }

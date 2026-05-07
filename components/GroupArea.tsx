@@ -165,8 +165,7 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
   }
 
   const removeGroupFriend = async (userId: string) => {
-    await supabase.from('friend_requests').delete().eq('status', 'accepted')
-      .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${currentUserId})`)
+    await supabase.rpc('remove_friend', { friend_user_id: userId })
     setFriendIds(prev => { const next = new Set(prev); next.delete(userId); return next })
   }
 
