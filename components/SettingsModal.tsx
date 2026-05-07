@@ -7,7 +7,9 @@ import type { Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
 import { useTheme } from './PremiumThemeProvider'
 
-type Tab = 'profile' | 'account'
+type Tab = 'profile' | 'account' | 'admin'
+
+type PremiumCode = { code: string; redeemed_by: string | null; created_at: string }
 
 interface Props {
   profile: Profile
@@ -67,6 +69,45 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   const [premiumLoading, setPremiumLoading] = useState(false)
   const [premiumMsg, setPremiumMsg]         = useState<{ ok: boolean; text: string } | null>(null)
+
+  // ── Admin tab ──
+  const [adminCodes, setAdminCodes]   = useState<PremiumCode[]>([])
+  const [adminLoaded, setAdminLoaded] = useState(false)
+  const [genLoading, setGenLoading]   = useState(false)
+  const [genMsg, setGenMsg]           = useState<{ ok: boolean; text: string } | null>(null)
+  const [copiedCode, setCopiedCode]   = useState<string | null>(null)
+
+  const loadAdminCodes = async () => {
+    const { data } = await supabase
+      .from('premium_codes')
+      .select('code, redeemed_by, created_at')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setAdminCodes((data ?? []) as PremiumCode[])
+    setAdminLoaded(true)
+  }
+
+  const generateCode = async () => {
+    setGenLoading(true)
+    setGenMsg(null)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    const code = `YASU-${seg()}-${seg()}-${seg()}`
+    const { error } = await supabase.from('premium_codes').insert({ code })
+    if (error) {
+      setGenMsg({ ok: false, text: 'Failed to generate code.' })
+    } else {
+      setGenMsg({ ok: true, text: `Code generated: ${code}` })
+      loadAdminCodes()
+    }
+    setGenLoading(false)
+  }
+
+  const copyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+    setCopiedCode(code)
+    setTimeout(() => setCopiedCode(null), 2000)
+  }
 
   // ── Avatar pick ──
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -355,14 +396,14 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#949ba4] mb-2 px-2">
             User Settings
           </p>
-          {(['profile', 'account'] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)}
+          {(['profile', 'account', ...(profile.is_admin ? ['admin'] : [])] as Tab[]).map(t => (
+            <button key={t} onClick={() => { setTab(t); if (t === 'admin' && !adminLoaded) loadAdminCodes() }}
               className={`w-full text-left px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize mb-0.5 ${
                 tab === t
                   ? 'bg-[#404249] text-[#dbdee1]'
                   : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
-              }`}>
-              {t === 'profile' ? 'Profile' : 'Account'}
+              } ${t === 'admin' ? 'text-red-400 hover:text-red-300' : ''}`}>
+              {t === 'profile' ? 'Profile' : t === 'account' ? 'Account' : '⚙ Admin'}
             </button>
           ))}
         </div>
@@ -370,8 +411,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         {/* ── Content ── */}
         <div className="flex-1 overflow-y-auto p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-[#dbdee1]">
-              {tab === 'profile' ? 'Profile' : 'Account'}
+            <h2 className={`text-xl font-bold ${tab === 'admin' ? 'text-red-400' : 'text-[#dbdee1]'}`}>
+              {tab === 'profile' ? 'Profile' : tab === 'account' ? 'Account' : 'Admin Panel'}
             </h2>
             <button onClick={onClose} className="text-[#949ba4] hover:text-[#dbdee1] transition-colors">
               <X className="w-5 h-5" />
@@ -476,6 +517,65 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                 className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm">
                 {profileLoading ? 'Saving…' : 'Save Changes'}
               </button>
+            </div>
+          )}
+
+          {/* ══ Admin tab ══ */}
+          {tab === 'admin' && profile.is_admin && (
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-bold uppercase tracking-widest text-red-400">Admin Panel</span>
+              </div>
+
+              {/* Generate code */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">
+                  Generate Premium Code
+                </p>
+                <button onClick={generateCode} disabled={genLoading}
+                  className="px-5 py-2.5 bg-red-500 hover:bg-red-600 disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm flex items-center gap-2">
+                  {genLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  Generate Code
+                </button>
+                {genMsg && (
+                  <p className={`text-sm mt-2 font-mono ${genMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>
+                    {genMsg.text}
+                  </p>
+                )}
+              </div>
+
+              {/* Code list */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">
+                    All Codes (last 50)
+                  </p>
+                  <button onClick={loadAdminCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">
+                    Refresh
+                  </button>
+                </div>
+                {adminCodes.length === 0 ? (
+                  <p className="text-sm text-[#4e5058]">No codes yet.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                    {adminCodes.map(c => (
+                      <div key={c.code} className={`flex items-center justify-between gap-3 px-3 py-2 rounded-md ${c.redeemed_by ? 'bg-[#1e1f22] opacity-50' : 'bg-[#1e1f22]'}`}>
+                        <span className={`font-mono text-sm ${c.redeemed_by ? 'text-[#4e5058] line-through' : 'text-[#dbdee1]'}`}>
+                          {c.code}
+                        </span>
+                        {c.redeemed_by ? (
+                          <span className="text-xs text-[#4e5058] shrink-0">Redeemed</span>
+                        ) : (
+                          <button onClick={() => copyCode(c.code)}
+                            className="text-xs text-[#5865f2] hover:text-[#7983f5] shrink-0 transition-colors font-medium">
+                            {copiedCode === c.code ? 'Copied!' : 'Copy'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

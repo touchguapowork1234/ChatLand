@@ -7,6 +7,7 @@ export type Profile = {
   bio: string | null
   created_at: string
   is_premium?: boolean
+  is_admin?: boolean
   banner_url?: string | null
   theme_primary?: string | null
   theme_secondary?: string | null
