@@ -53,7 +53,7 @@ export default function UserPanel({ profile: initialProfile }: { profile: Profil
         <SettingsModal
           profile={profile}
           onClose={() => setShowSettings(false)}
-          onUpdated={updated => { setProfile(updated); setShowSettings(false) }}
+          onUpdated={updated => setProfile(updated)}
         />
       )}
     </>

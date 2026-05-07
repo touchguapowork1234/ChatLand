@@ -69,10 +69,18 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [cardPrimary,    setCardPrimary]    = useState(profile.card_primary    ?? '#5865f2')
   const [cardSecondary,  setCardSecondary]  = useState(profile.card_secondary  ?? '#7983f5')
 
-  const handleThemeToggle = (enabled: boolean) => {
+  const handleThemeToggle = async (enabled: boolean) => {
     setThemeEnabled(enabled)
     if (enabled) setTheme(themePrimary, themeSecondary)
     else resetTheme()
+    await supabase.from('profiles').update({ theme_enabled: enabled }).eq('id', profile.id)
+    onUpdated({ ...profile, theme_enabled: enabled })
+  }
+
+  const handleCardToggle = async (enabled: boolean) => {
+    setCardEnabled(enabled)
+    await supabase.from('profiles').update({ card_enabled: enabled }).eq('id', profile.id)
+    onUpdated({ ...profile, card_enabled: enabled })
   }
 
   const [premiumLoading, setPremiumLoading] = useState(false)
@@ -747,7 +755,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                         <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Profile Card Color</p>
                         <button
                           type="button"
-                          onClick={() => setCardEnabled(v => !v)}
+                          onClick={() => handleCardToggle(!cardEnabled)}
                           className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${cardEnabled ? 'bg-[#23a55a]' : 'bg-[#4e5058]'}`}
                         >
                           <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${cardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />

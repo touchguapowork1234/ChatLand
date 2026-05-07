@@ -3,7 +3,8 @@
 import { createContext, useContext, useEffect } from 'react'
 import type { Profile } from '@/lib/types'
 
-const DEFAULTS = { primary: '#2b2d31', secondary: '#2b2d31' }
+const DEFAULT_PRIMARY   = '#2b2d31'
+const DEFAULT_SECONDARY = '#2b2d31'
 
 interface ThemeCtx {
   setTheme: (primary: string, secondary: string) => void
@@ -14,6 +15,24 @@ const ThemeContext = createContext<ThemeCtx>({ setTheme: () => {}, resetTheme: (
 
 export const useTheme = () => useContext(ThemeContext)
 
+function applyVars(primary: string, secondary: string) {
+  const d = document.documentElement
+  d.style.setProperty('--theme-primary',          primary)
+  d.style.setProperty('--theme-secondary',         secondary)
+  d.style.setProperty('--theme-overlay-rail',      'rgba(0,0,0,0.5)')
+  d.style.setProperty('--theme-overlay-sidebar',   'rgba(0,0,0,0.35)')
+  d.style.setProperty('--theme-active',            '1')
+}
+
+function resetVars() {
+  const d = document.documentElement
+  d.style.setProperty('--theme-primary',          DEFAULT_PRIMARY)
+  d.style.setProperty('--theme-secondary',         DEFAULT_SECONDARY)
+  d.style.setProperty('--theme-overlay-rail',      'rgba(0,0,0,0)')
+  d.style.setProperty('--theme-overlay-sidebar',   'rgba(0,0,0,0)')
+  d.style.setProperty('--theme-active',            '0')
+}
+
 export default function PremiumThemeProvider({
   profile,
   children,
@@ -22,24 +41,13 @@ export default function PremiumThemeProvider({
   children: React.ReactNode
 }) {
   useEffect(() => {
-    if (profile.is_premium && profile.theme_primary && profile.theme_enabled !== false) {
-      document.documentElement.style.setProperty('--theme-primary', profile.theme_primary)
-      document.documentElement.style.setProperty('--theme-secondary', profile.theme_secondary || profile.theme_primary)
+    if (profile.is_premium && profile.theme_primary && profile.theme_enabled === true) {
+      applyVars(profile.theme_primary, profile.theme_secondary || profile.theme_primary)
     }
   }, [])
 
-  const setTheme = (primary: string, secondary: string) => {
-    document.documentElement.style.setProperty('--theme-primary', primary)
-    document.documentElement.style.setProperty('--theme-secondary', secondary)
-  }
-
-  const resetTheme = () => {
-    document.documentElement.style.setProperty('--theme-primary', DEFAULTS.primary)
-    document.documentElement.style.setProperty('--theme-secondary', DEFAULTS.secondary)
-  }
-
   return (
-    <ThemeContext.Provider value={{ setTheme, resetTheme }}>
+    <ThemeContext.Provider value={{ setTheme: applyVars, resetTheme: resetVars }}>
       {children}
     </ThemeContext.Provider>
   )
