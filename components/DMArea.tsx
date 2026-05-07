@@ -622,7 +622,6 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                     <span className="truncate">{repliedMsg.content}</span>
                   </div>
                 )}
-                )}
                 {!grouped && (
                   <div className="flex items-baseline gap-2 mb-0.5">
                     <span className="font-semibold text-[#dbdee1] text-sm">{displayName(msg.profiles)}</span>
