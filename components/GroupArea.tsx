@@ -633,12 +633,16 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    {repliedMsg && (
-                      <div className="flex items-center gap-2 mb-1 text-xs text-[#949ba4] cursor-default">
-                        <div className="w-0.5 h-4 bg-[#4e5058] rounded-full shrink-0" />
-                        <span className="font-semibold text-[#b5bac1] truncate max-w-[80px]">{displayName(repliedMsg.profiles)}</span>
+                    {repliedMsg && (() => {
+                      const replyToMe = repliedMsg.sender_id === currentUserId
+                      return (
+                      <div className={`flex items-center gap-2 mb-1 text-xs cursor-default ${replyToMe ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>
+                        <div className={`w-0.5 h-4 rounded-full shrink-0 ${replyToMe ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`} />
+                        <span className={`font-semibold truncate max-w-[80px] ${replyToMe ? 'text-[#f5c842]' : 'text-[#b5bac1]'}`}>{displayName(repliedMsg.profiles)}</span>
                         <span className="truncate">{repliedMsg.content}</span>
                       </div>
+                      )
+                    })()}
                     )}
                     {!grouped && (
                       <div className="flex items-baseline gap-2 mb-0.5">
