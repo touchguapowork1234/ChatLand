@@ -340,6 +340,11 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     otherUser,
   ]
 
+  const validMentionUsernames = new Set([
+    ...mentionableProfiles.map(p => p.username),
+    'everyone',
+  ])
+
   const filteredMentions = mentionQuery === null ? [] : mentionableProfiles.filter(p => {
     if (!mentionQuery) return true
     const q = mentionQuery.toLowerCase()
@@ -369,7 +374,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     const parts = text.split(/(@\w+)/g)
     return parts.map((part, idx) => {
       if (/^@\w+$/.test(part)) {
-        const isMe = !!currentUserUsername && part.slice(1) === currentUserUsername
+        const username = part.slice(1)
+        if (!validMentionUsernames.has(username)) return part
+        const isMe = !!currentUserUsername && username === currentUserUsername
         return (
           <span key={idx} className={`font-medium rounded-sm px-0.5 ${isMe ? 'text-[#f0b132] bg-[#f0b132]/10' : 'text-[#5865f2] bg-[#5865f2]/10'}`}>
             {part}
@@ -389,6 +396,8 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   }
 
   const hasTopBar = !!replyTo || !!pendingFile
+  const showEveryoneOption = mentionQuery !== null && (mentionQuery === '' || 'everyone'.startsWith(mentionQuery.toLowerCase()))
+  const showMentionDropdown = mentionQuery !== null && (filteredMentions.length > 0 || showEveryoneOption)
 
   return (
     <div
@@ -645,7 +654,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           const isMe = msg.sender_id === currentUserId
           const repliedMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
           const isReplyToMe = !!repliedMsg && repliedMsg.sender_id === currentUserId
-          const isMentionedMe = !!currentUserUsername && msg.content.includes('@' + currentUserUsername)
+          const isMentionedMe = !!currentUserUsername && (
+            msg.content.includes('@' + currentUserUsername) || msg.content.includes('@everyone')
+          )
           const isHighlighted = isReplyToMe || isMentionedMe
 
           return (
@@ -781,8 +792,20 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           </div>
         )}
         <div className="relative">
-          {mentionQuery !== null && filteredMentions.length > 0 && (
+          {showMentionDropdown && (
             <div className="absolute bottom-full left-0 right-0 mb-1 bg-[#2b2d31] border border-[#1e1f22] rounded-lg shadow-xl overflow-y-auto z-50 max-h-48">
+              {showEveryoneOption && (
+                <button
+                  onMouseDown={e => { e.preventDefault(); insertMention('everyone') }}
+                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-[#383a40] text-left"
+                >
+                  <div className="w-6 h-6 rounded-full bg-[#5865f2] flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
+                    @
+                  </div>
+                  <span className="text-sm text-[#dbdee1] font-medium">everyone</span>
+                  <span className="text-xs text-[#949ba4] ml-auto">Notify all members</span>
+                </button>
+              )}
               {filteredMentions.map(user => (
                 <button
                   key={user.id}
