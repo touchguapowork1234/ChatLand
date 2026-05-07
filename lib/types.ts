@@ -25,6 +25,7 @@ export type Profile = {
   profile_tilt_enabled?: boolean
   profile_bg_animation?: string | null
   profile_bg_opacity?: number | null
+  profile_decoration?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>

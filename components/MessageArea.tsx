@@ -7,6 +7,7 @@ import type { Message, Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
 import MessageInput from './MessageInput'
 import { renderContent } from '@/lib/renderContent'
+import AvatarWithDecoration from './AvatarWithDecoration'
 
 type MessageWithProfile = Message & { profiles: Profile }
 
@@ -104,10 +105,13 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
               )}
               <div className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''}`}>
                 {!grouped ? (
-                  <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold text-sm shrink-0 mt-0.5 select-none">
-                    {msg.profiles?.avatar_url
-                      ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                      : (msg.profiles?.display_name || msg.profiles?.username)?.charAt(0).toUpperCase()}
+                  <div className="mt-0.5">
+                    <AvatarWithDecoration
+                      avatarUrl={msg.profiles?.avatar_url}
+                      displayInitial={(msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
+                      size={40}
+                      decoration={msg.profiles?.profile_decoration}
+                    />
                   </div>
                 ) : (
                   <div className="w-10 shrink-0 flex items-center justify-center">

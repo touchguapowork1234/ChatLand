@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { displayName, userTag } from '@/lib/types'
 import { ShootingStarsAnimation, SnowAnimation } from './ProfileBgAnimation'
+import AvatarWithDecoration from './AvatarWithDecoration'
 
 type Tab = 'overview' | 'mutuals'
 
@@ -151,14 +152,18 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
 
           {/* Avatar */}
           <div className="px-5 pb-0 relative shrink-0" style={{ marginTop: -48 }}>
-            <div
-              className="rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-3xl font-bold select-none"
-              style={{ width: 96, height: 96, boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }}
-            >
-              {loading ? null : profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
-                : (profile?.display_name || profile?.username || '?').charAt(0).toUpperCase()}
-            </div>
+            {loading ? (
+              <div className="rounded-full bg-[#383a40]" style={{ width: 96, height: 96, boxShadow: '0 0 0 4px rgba(0,0,0,0.4)' }} />
+            ) : (
+              <div style={{ boxShadow: '0 0 0 4px rgba(0,0,0,0.4)', borderRadius: '50%', display: 'inline-block' }}>
+                <AvatarWithDecoration
+                  avatarUrl={profile?.avatar_url}
+                  displayInitial={(profile?.display_name || profile?.username || '?').charAt(0).toUpperCase()}
+                  size={96}
+                  decoration={profile?.profile_decoration}
+                />
+              </div>
+            )}
           </div>
 
           {/* Name block */}

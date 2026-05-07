@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
 import { useTheme } from './PremiumThemeProvider'
 import type { AnimConfig } from './PremiumThemeProvider'
+import { DECORATIONS } from '@/lib/decorations'
 
 type Tab = 'profile' | 'account' | 'admin'
 
@@ -79,6 +80,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [bgAnimEnabled, setBgAnimEnabled] = useState(!!(profile.profile_bg_animation))
   const [bgAnimType, setBgAnimType]       = useState<string>(profile.profile_bg_animation ?? 'shooting_stars')
   const [bgAnimOpacity, setBgAnimOpacity] = useState<number>(profile.profile_bg_opacity ?? 1)
+  const [decoration, setDecoration]       = useState<string | null>(profile.profile_decoration ?? null)
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -407,6 +409,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       profile_tilt_enabled:  profileTiltEnabled,
       profile_bg_animation:  bgAnimEnabled ? bgAnimType : null,
       profile_bg_opacity:    bgAnimOpacity,
+      profile_decoration:    decoration,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -809,6 +812,54 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                         </div>
                         <div className="flex-1 h-8 rounded-md mt-6 self-end"
                           style={{ background: `linear-gradient(135deg, ${cardPrimary}, ${cardSecondary})` }} />
+                      </div>
+                    </div>
+
+                    {/* Decorations */}
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Decorations</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* None option */}
+                        <button
+                          type="button"
+                          onClick={() => setDecoration(null)}
+                          className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                            decoration === null
+                              ? 'border-[#f0b132] bg-[#f0b132]/10'
+                              : 'border-[#3f4147] bg-[#1e1f22] hover:border-[#5865f2]'
+                          }`}
+                        >
+                          <div className="w-12 h-12 rounded-full bg-[#383a40] flex items-center justify-center">
+                            <span className="text-[#949ba4] text-lg font-bold">✕</span>
+                          </div>
+                          <p className={`text-xs font-medium ${decoration === null ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>None</p>
+                        </button>
+
+                        {DECORATIONS.map(dec => (
+                          <button
+                            key={dec.id}
+                            type="button"
+                            onClick={() => setDecoration(dec.id)}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                              decoration === dec.id
+                                ? 'border-[#f0b132] bg-[#f0b132]/10'
+                                : 'border-[#3f4147] bg-[#1e1f22] hover:border-[#5865f2]'
+                            }`}
+                          >
+                            {/* Preview: avatar circle with decoration overlaid */}
+                            <div className="relative" style={{ width: 48, height: 48 }}>
+                              <div className="w-full h-full rounded-full bg-[#5865f2]" />
+                              <img
+                                src={dec.src}
+                                alt={dec.label}
+                                draggable={false}
+                                className="absolute pointer-events-none select-none"
+                                style={{ width: 78, height: 78, top: -15, left: -15 }}
+                              />
+                            </div>
+                            <p className={`text-xs font-medium text-center leading-tight ${decoration === dec.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{dec.label}</p>
+                          </button>
+                        ))}
                       </div>
                     </div>
 

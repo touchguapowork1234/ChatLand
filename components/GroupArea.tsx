@@ -11,6 +11,7 @@ import AddGroupMemberModal from './AddGroupMemberModal'
 import FileAttachment from './FileAttachment'
 import { useGroupCall } from './GroupCallProvider'
 import { renderContent } from '@/lib/renderContent'
+import AvatarWithDecoration from './AvatarWithDecoration'
 
 interface Props {
   group: GroupChat
@@ -665,12 +666,13 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                 )}
                 <div className={`chat-msg-animate flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
                   {!grouped ? (
-                    <div
-                      onContextMenu={e => onCtx(e, msg.sender_id)}
-                      className={`w-10 h-10 rounded-full overflow-hidden flex items-center justify-center text-white font-bold shrink-0 mt-0.5 text-sm select-none cursor-pointer ${isMe ? 'bg-[#383a40]' : 'bg-[#383a40]'}`}>
-                      {msg.profiles?.avatar_url
-                        ? <img src={msg.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : (msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
+                    <div onContextMenu={e => onCtx(e, msg.sender_id)} className="mt-0.5">
+                      <AvatarWithDecoration
+                        avatarUrl={msg.profiles?.avatar_url}
+                        displayInitial={(msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
+                        size={40}
+                        decoration={msg.profiles?.profile_decoration}
+                      />
                     </div>
                   ) : (
                     <div className="w-10 shrink-0 flex items-center justify-center">
