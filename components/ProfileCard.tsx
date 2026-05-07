@@ -67,7 +67,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={onBackdrop}
     >
-      <div className="rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col" style={loading ? { background: '#232428' } : cardBodyStyle}>
+      <div className="profile-card-animate rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col" style={loading ? { background: '#232428' } : cardBodyStyle}>
         {/* Banner */}
         <div className="h-28 relative shrink-0" style={bannerStyle}>
           {profile?.banner_url && (

@@ -661,7 +661,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
           return (
             <div key={msg.id}
-              className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
+              className={`chat-msg-animate flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
               {!grouped ? (
                 <div
                   onContextMenu={e => onCtx(e, msg.sender_id)}

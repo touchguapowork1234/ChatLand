@@ -15,6 +15,13 @@ export type Profile = {
   theme_secondary?: string | null
   card_primary?: string | null
   card_secondary?: string | null
+  animations_enabled?: boolean
+  anim_profile_fade?: boolean
+  anim_chat_fade?: boolean
+  anim_gradient?: boolean
+  anim_hover_glow?: boolean
+  anim_message_entrance?: boolean
+  anim_smooth_transitions?: boolean
 }
 
 export const userTag = (p?: Profile | null) =>

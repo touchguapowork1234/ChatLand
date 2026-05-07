@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
 import { useTheme } from './PremiumThemeProvider'
+import type { AnimConfig } from './PremiumThemeProvider'
 
 type Tab = 'profile' | 'account' | 'admin'
 
@@ -26,7 +27,7 @@ const BANNER_OUT_H = 224
 
 export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const supabase = createClient()
-  const { setTheme, resetTheme } = useTheme()
+  const { setTheme, resetTheme, setAnimations } = useTheme()
   const [tab, setTab] = useState<Tab>('profile')
 
   // ── Profile tab ──
@@ -72,6 +73,27 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const handleThemeToggle = (enabled: boolean) => {
     setThemeEnabled(enabled)
   }
+
+  // Animation settings
+  const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
+  const [animProfileFade,       setAnimProfileFade]       = useState(profile.anim_profile_fade    ?? true)
+  const [animChatFade,          setAnimChatFade]          = useState(profile.anim_chat_fade       ?? true)
+  const [animGradient,          setAnimGradient]          = useState(profile.anim_gradient        ?? true)
+  const [animHoverGlow,         setAnimHoverGlow]         = useState(profile.anim_hover_glow      ?? false)
+  const [animMessageEntrance,   setAnimMessageEntrance]   = useState(profile.anim_message_entrance ?? true)
+  const [animSmoothTransitions, setAnimSmoothTransitions] = useState(profile.anim_smooth_transitions ?? false)
+
+  const buildAnimConfig = (overrides: Partial<AnimConfig> = {}): AnimConfig => ({
+    isPremium:        isPremium,
+    enabled:          animEnabled,
+    profileFade:      animProfileFade,
+    chatFade:         animChatFade,
+    gradient:         animGradient,
+    hoverGlow:        animHoverGlow,
+    messageEntrance:  animMessageEntrance,
+    smoothTransitions:animSmoothTransitions,
+    ...overrides,
+  })
 
   const [premiumLoading, setPremiumLoading] = useState(false)
   const [premiumMsg, setPremiumMsg]         = useState<{ ok: boolean; text: string } | null>(null)
@@ -370,12 +392,19 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     }
 
     const patch: Partial<Profile> = {
-      theme_enabled:   themeEnabled,
-      card_enabled:    cardEnabled,
-      theme_primary:   themePrimary,
-      theme_secondary: themeSecondary,
-      card_primary:    cardPrimary,
-      card_secondary:  cardSecondary,
+      theme_enabled:         themeEnabled,
+      card_enabled:          cardEnabled,
+      theme_primary:         themePrimary,
+      theme_secondary:       themeSecondary,
+      card_primary:          cardPrimary,
+      card_secondary:        cardSecondary,
+      animations_enabled:    animEnabled,
+      anim_profile_fade:     animProfileFade,
+      anim_chat_fade:        animChatFade,
+      anim_gradient:         animGradient,
+      anim_hover_glow:       animHoverGlow,
+      anim_message_entrance: animMessageEntrance,
+      anim_smooth_transitions: animSmoothTransitions,
       ...(newBannerUrl ? { banner_url: newBannerUrl } : {}),
     }
 
@@ -387,6 +416,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       setBannerSrc(null)
       if (themeEnabled) setTheme(themePrimary, themeSecondary)
       else resetTheme()
+      setAnimations(buildAnimConfig())
       setPremiumMsg({ ok: true, text: 'Premium settings saved!' })
       onUpdated({ ...profile, ...patch, banner_url: newBannerUrl ?? profile.banner_url })
     }
@@ -771,6 +801,84 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                         <div className="flex-1 h-8 rounded-md mt-6 self-end"
                           style={{ background: `linear-gradient(135deg, ${cardPrimary}, ${cardSecondary})` }} />
                       </div>
+                    </div>
+
+                    {/* Advanced Animations */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Advanced Animations</p>
+                          <p className="text-xs text-[#949ba4] mt-0.5">Enhanced visual effects and transitions</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const next = !animEnabled
+                            setAnimEnabled(next)
+                            setAnimations(buildAnimConfig({ enabled: next }))
+                          }}
+                          className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${animEnabled ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                        >
+                          <span className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${animEnabled ? 'translate-x-[20px]' : 'translate-x-0'}`} />
+                        </button>
+                      </div>
+
+                      {animEnabled && (
+                        <div className="mt-3 bg-[#1e1f22] rounded-lg p-4 space-y-4">
+                          {([
+                            {
+                              label: 'Profile Fade In',
+                              desc: 'Profile cards fade and scale in when opened',
+                              state: animProfileFade,
+                              set: (v: boolean) => { setAnimProfileFade(v); setAnimations(buildAnimConfig({ profileFade: v })) },
+                            },
+                            {
+                              label: 'Chat Fade In',
+                              desc: 'Messages fade up into view as they appear',
+                              state: animChatFade,
+                              set: (v: boolean) => { setAnimChatFade(v); setAnimations(buildAnimConfig({ chatFade: v })) },
+                            },
+                            {
+                              label: 'Moving Gradient',
+                              desc: 'Interface background gradient slowly animates (requires Interface Theme)',
+                              state: animGradient,
+                              set: (v: boolean) => { setAnimGradient(v); setAnimations(buildAnimConfig({ gradient: v })) },
+                            },
+                            {
+                              label: 'Hover Glow',
+                              desc: 'Subtle blurple inner glow on messages when hovered',
+                              state: animHoverGlow,
+                              set: (v: boolean) => { setAnimHoverGlow(v); setAnimations(buildAnimConfig({ hoverGlow: v })) },
+                            },
+                            {
+                              label: 'Message Entrance Slide',
+                              desc: 'Messages slide in from the side when appearing',
+                              state: animMessageEntrance,
+                              set: (v: boolean) => { setAnimMessageEntrance(v); setAnimations(buildAnimConfig({ messageEntrance: v })) },
+                            },
+                            {
+                              label: 'Smooth Transitions',
+                              desc: 'Snappier, spring-based transitions throughout the interface',
+                              state: animSmoothTransitions,
+                              set: (v: boolean) => { setAnimSmoothTransitions(v); setAnimations(buildAnimConfig({ smoothTransitions: v })) },
+                            },
+                          ] as { label: string; desc: string; state: boolean; set: (v: boolean) => void }[]).map(({ label, desc, state, set }) => (
+                            <div key={label} className="flex items-center justify-between gap-4">
+                              <div className="min-w-0">
+                                <p className="text-sm text-[#dbdee1] font-medium">{label}</p>
+                                <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">{desc}</p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => set(!state)}
+                                className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${state ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                              >
+                                <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${state ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {premiumMsg && (
