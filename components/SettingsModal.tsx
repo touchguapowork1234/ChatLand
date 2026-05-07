@@ -8,6 +8,7 @@ import { userTag } from '@/lib/types'
 import { useTheme } from './PremiumThemeProvider'
 import type { AnimConfig } from './PremiumThemeProvider'
 import { DECORATIONS } from '@/lib/decorations'
+import AvatarWithDecoration from './AvatarWithDecoration'
 
 type Tab = 'profile' | 'account' | 'admin'
 
@@ -847,17 +848,12 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                             }`}
                           >
                             {/* Preview: avatar circle with decoration overlaid */}
-                            {(() => {
-                              const s = 48, d = s * 1.5, o = -((d - s) / 2)
-                              return (
-                                <div className="relative" style={{ width: s, height: s }}>
-                                  <div className="w-full h-full rounded-full bg-[#5865f2]" />
-                                  <img src={dec.src} alt={dec.label} draggable={false}
-                                    className="absolute pointer-events-none select-none"
-                                    style={{ width: d, height: d, top: o, left: o }} />
-                                </div>
-                              )
-                            })()}
+                            <AvatarWithDecoration
+                              displayInitial=""
+                              size={48}
+                              decoration={dec.id}
+                              className="mx-auto"
+                            />
                             <p className={`text-xs font-medium text-center leading-tight ${decoration === dec.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{dec.label}</p>
                           </button>
                         ))}
