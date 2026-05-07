@@ -107,6 +107,12 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
 
+  const latestTsRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    const last = messages[messages.length - 1]
+    if (last) latestTsRef.current = last.created_at
+  }, [messages])
+
   const fetchMessages = async () => {
     const { data } = await supabase
       .from('group_messages')
@@ -114,6 +120,23 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
       .eq('group_id', group.id)
       .order('created_at', { ascending: true })
     if (data) setMessages(data as GroupMessage[])
+  }
+
+  const fetchNewMessages = async () => {
+    const since = latestTsRef.current
+    if (!since) return
+    const { data } = await supabase
+      .from('group_messages')
+      .select('*, profiles(*)')
+      .eq('group_id', group.id)
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+    if (data?.length) {
+      setMessages(prev => {
+        const incoming = (data as GroupMessage[]).filter(m => !prev.find(p => p.id === m.id))
+        return incoming.length ? [...prev, ...incoming] : prev
+      })
+    }
   }
 
   // Realtime new messages
@@ -132,7 +155,6 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
       .subscribe(status => {
         if (status === 'SUBSCRIBED') {
           if (firstSubscribe) { firstSubscribe = false; return }
-          // Reconnected after a drop — fill any gaps
           fetchMessages()
         }
       })
@@ -140,10 +162,18 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
     return () => { supabase.removeChannel(ch) }
   }, [group.id])
 
+  // Polling fallback — catches any messages realtime missed
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchNewMessages()
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [group.id])
+
   // Refetch when tab becomes visible again
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchMessages()
+      if (document.visibilityState === 'visible') fetchNewMessages()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)

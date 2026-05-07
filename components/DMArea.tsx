@@ -159,6 +159,13 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setIsFriend(false)
   }
 
+  // Ref tracking the created_at of the newest message we have, for incremental polls
+  const latestTsRef = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    const last = messages[messages.length - 1]
+    if (last && !last.failed) latestTsRef.current = last.created_at
+  }, [messages])
+
   const fetchMessages = async () => {
     const { data } = await supabase
       .from('dm_messages')
@@ -166,6 +173,23 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       .eq('dm_id', dmId)
       .order('created_at', { ascending: true })
     if (data) setMessages(data as DmMessage[])
+  }
+
+  const fetchNewMessages = async () => {
+    const since = latestTsRef.current
+    if (!since) return
+    const { data } = await supabase
+      .from('dm_messages')
+      .select('*, profiles(*)')
+      .eq('dm_id', dmId)
+      .gt('created_at', since)
+      .order('created_at', { ascending: true })
+    if (data?.length) {
+      setMessages(prev => {
+        const incoming = (data as DmMessage[]).filter(m => !prev.find(p => p.id === m.id))
+        return incoming.length ? [...prev, ...incoming] : prev
+      })
+    }
   }
 
   useEffect(() => {
@@ -183,7 +207,6 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       .subscribe(status => {
         if (status === 'SUBSCRIBED') {
           if (firstSubscribe) { firstSubscribe = false; return }
-          // Reconnected after a drop — fill any gaps
           fetchMessages()
         }
       })
@@ -191,10 +214,18 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     return () => { supabase.removeChannel(ch) }
   }, [dmId])
 
-  // Refetch when tab becomes visible again (catches missed messages while backgrounded)
+  // Polling fallback — catches any messages realtime missed
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') fetchNewMessages()
+    }, 3000)
+    return () => clearInterval(interval)
+  }, [dmId])
+
+  // Refetch when tab becomes visible again
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === 'visible') fetchMessages()
+      if (document.visibilityState === 'visible') fetchNewMessages()
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)

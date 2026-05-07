@@ -40,17 +40,24 @@ export default function UnreadProvider({ profile, children }: { profile: Profile
   const groupId = params?.groupId as string | undefined
 
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({})
-  const [dms, setDms]     = useState<DmEntry[]>([])
+  const [dms, setDms]       = useState<DmEntry[]>([])
   const [groups, setGroups] = useState<GroupChat[]>([])
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
 
   const currentDmIdRef    = useRef<string | undefined>(undefined)
   const currentGroupIdRef = useRef<string | undefined>(undefined)
   const hiddenIdsRef      = useRef<Set<string>>(new Set())
+  const dmsRef            = useRef<DmEntry[]>([])
+  const groupsRef         = useRef<GroupChat[]>([])
+  // Tracks message IDs already counted to prevent double-counting between realtime + poll
+  const countedIdsRef     = useRef<Set<string>>(new Set())
+  const lastPollRef       = useRef<string>(new Date().toISOString())
 
   useEffect(() => { currentDmIdRef.current = dmId },      [dmId])
   useEffect(() => { currentGroupIdRef.current = groupId }, [groupId])
   useEffect(() => { hiddenIdsRef.current = hiddenIds },   [hiddenIds])
+  useEffect(() => { dmsRef.current = dms },               [dms])
+  useEffect(() => { groupsRef.current = groups },         [groups])
 
   // Load persisted state from localStorage
   useEffect(() => {
@@ -127,40 +134,89 @@ export default function UnreadProvider({ profile, children }: { profile: Profile
     if (groupId) clearUnread(groupId)
   }, [groupId])
 
-  // Realtime unread subscriptions — always active regardless of route
+  const countMsg = (id: string, conversationId: string, type: 'dm' | 'group', dmId_: string | undefined, unhide?: () => void) => {
+    if (countedIdsRef.current.has(id)) return
+    countedIdsRef.current.add(id)
+    if (type === 'dm' && currentDmIdRef.current === conversationId) return
+    if (type === 'group' && currentGroupIdRef.current === conversationId) return
+    if (unhide) unhide()
+    setUnreadCounts(prev => {
+      const next = { ...prev, [conversationId]: (prev[conversationId] ?? 0) + 1 }
+      try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
+      return next
+    })
+  }
+
+  // Realtime unread subscriptions
   useEffect(() => {
     const channel = supabase.channel(`unread_${profile.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'dm_messages' }, payload => {
-        const msg = payload.new as { dm_id: string; sender_id: string }
+        const msg = payload.new as { id: string; dm_id: string; sender_id: string }
         if (msg.sender_id === profile.id) return
-        if (currentDmIdRef.current === msg.dm_id) return
-        // Un-hide if the DM was hidden
-        if (hiddenIdsRef.current.has(msg.dm_id)) {
-          const next = new Set(hiddenIdsRef.current)
-          next.delete(msg.dm_id)
-          setHiddenIds(next)
-          try { localStorage.setItem(`cl_hidden_dms_${profile.id}`, JSON.stringify([...next])) } catch {}
-        }
-        setUnreadCounts(prev => {
-          const next = { ...prev, [msg.dm_id]: (prev[msg.dm_id] ?? 0) + 1 }
-          try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
-          return next
+        countMsg(msg.id, msg.dm_id, 'dm', undefined, () => {
+          if (hiddenIdsRef.current.has(msg.dm_id)) {
+            const next = new Set(hiddenIdsRef.current)
+            next.delete(msg.dm_id)
+            setHiddenIds(next)
+            try { localStorage.setItem(`cl_hidden_dms_${profile.id}`, JSON.stringify([...next])) } catch {}
+          }
         })
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, payload => {
-        const msg = payload.new as { group_id: string; sender_id: string; type?: string }
+        const msg = payload.new as { id: string; group_id: string; sender_id: string; type?: string }
         if (msg.sender_id === profile.id) return
         if (msg.type === 'system') return
-        if (currentGroupIdRef.current === msg.group_id) return
-        setUnreadCounts(prev => {
-          const next = { ...prev, [msg.group_id]: (prev[msg.group_id] ?? 0) + 1 }
-          try { localStorage.setItem(`cl_unread_${profile.id}`, JSON.stringify(next)) } catch {}
-          return next
-        })
+        countMsg(msg.id, msg.group_id, 'group', undefined)
       })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
+  }, [profile.id])
+
+  // Polling fallback — catches unread messages that realtime missed
+  useEffect(() => {
+    const poll = async () => {
+      if (document.visibilityState !== 'visible') return
+      const since = lastPollRef.current
+      lastPollRef.current = new Date().toISOString()
+
+      const dmIds = dmsRef.current.map(d => d.id)
+      if (dmIds.length > 0) {
+        const { data } = await supabase
+          .from('dm_messages')
+          .select('id, dm_id, sender_id')
+          .in('dm_id', dmIds)
+          .neq('sender_id', profile.id)
+          .gt('created_at', since)
+        for (const m of (data ?? []) as { id: string; dm_id: string; sender_id: string }[]) {
+          countMsg(m.id, m.dm_id, 'dm', undefined, () => {
+            if (hiddenIdsRef.current.has(m.dm_id)) {
+              const next = new Set(hiddenIdsRef.current)
+              next.delete(m.dm_id)
+              setHiddenIds(next)
+              try { localStorage.setItem(`cl_hidden_dms_${profile.id}`, JSON.stringify([...next])) } catch {}
+            }
+          })
+        }
+      }
+
+      const groupIds = groupsRef.current.map(g => g.id)
+      if (groupIds.length > 0) {
+        const { data } = await supabase
+          .from('group_messages')
+          .select('id, group_id, sender_id, type')
+          .in('group_id', groupIds)
+          .neq('sender_id', profile.id)
+          .gt('created_at', since)
+        for (const m of (data ?? []) as { id: string; group_id: string; sender_id: string; type?: string }[]) {
+          if (m.type === 'system') continue
+          countMsg(m.id, m.group_id, 'group', undefined)
+        }
+      }
+    }
+
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
   }, [profile.id])
 
   return (
