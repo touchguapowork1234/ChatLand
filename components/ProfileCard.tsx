@@ -137,7 +137,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         </div>
 
         {/* Tab content */}
-        <div className={`flex-1 overflow-y-auto max-h-80 p-5 ${cardColorActive ? 'bg-black/20' : ''}`}>
+        <div className={`flex-1 overflow-y-auto max-h-[480px] p-5 ${cardColorActive ? 'bg-black/20' : ''}`}>
           {tab === 'overview' && (
             loading ? (
               <div className="space-y-2">
@@ -145,13 +145,14 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
                 <div className="h-3 w-full bg-[#383a40] rounded animate-pulse" />
                 <div className="h-3 w-3/4 bg-[#383a40] rounded animate-pulse" />
               </div>
-            ) : profile?.bio ? (
-              <>
-                <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide mb-2">About Me</p>
-                <p className="text-sm text-[#dbdee1] leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
-              </>
             ) : (
-              <p className="text-sm text-[#4e5058] text-center mt-4">No bio yet.</p>
+              <div className="min-h-[180px]">
+                <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide mb-3">About Me</p>
+                {profile?.bio
+                  ? <p className="text-sm text-[#dbdee1] leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
+                  : <p className="text-sm text-[#4e5058]">No bio yet.</p>
+                }
+              </div>
             )
           )}
 
