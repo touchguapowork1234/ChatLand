@@ -617,7 +617,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                     <div className="flex-1 h-px bg-[#3f4147]" />
                   </div>
                 )}
-                <div className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''} ${isReplyToMe ? 'bg-[#f0b132]/20' : ''}`}>
+                <div className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isReplyToMe ? 'bg-[#f0b132]/20' : ''}`}>
                   {!grouped ? (
                     <div
                       onContextMenu={e => onCtx(e, msg.sender_id)}

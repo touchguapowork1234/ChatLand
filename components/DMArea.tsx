@@ -563,7 +563,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             }[call.status]
 
             return (
-              <div key={call.id} className="flex items-center gap-3 px-2 py-2 mt-3 rounded hover:bg-[#2e3035]">
+              <div key={call.id} className="flex items-center gap-3 px-2 py-2 mt-3 rounded hover:bg-[var(--theme-message-hover)]">
                 <div className={`w-10 h-10 rounded-full ${cfg.bg} flex items-center justify-center shrink-0 ${cfg.fg}`}>
                   {cfg.icon}
                 </div>
@@ -599,7 +599,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
           return (
             <div key={msg.id}
-              className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[#2e3035] group ${!grouped ? 'mt-4' : ''} ${isReplyToMe ? 'bg-[#f0b132]/20' : ''}`}>
+              className={`flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isReplyToMe ? 'bg-[#f0b132]/20' : ''}`}>
               {!grouped ? (
                 <div
                   onContextMenu={e => onCtx(e, msg.sender_id)}
