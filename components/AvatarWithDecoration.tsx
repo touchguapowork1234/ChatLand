@@ -9,19 +9,13 @@ interface Props {
   onClick?: () => void
 }
 
-// The decoration PNG (288×288) has opaque pixels starting at x=5 and ending at x=282.
-// To land those tips exactly on the left/right circle edges:
-//   decSize = size * 288 / 277
-//   offset  = -5 * size / 277
-const IMG_W   = 288
-const TIP_L   = 5    // leftmost opaque pixel
-const TIP_R   = 282  // rightmost opaque pixel
-const CONTENT = TIP_R - TIP_L  // 277
+// 1.2× scale, exact floats — no rounding so both sides are perfectly symmetric
+const SCALE = 1.2
 
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
   const dec     = decorationById(decoration)
-  const decSize = size * IMG_W / CONTENT         // ≈ 1.04 × size
-  const offset  = -(TIP_L * size / CONTENT)     // ≈ -0.018 × size
+  const decSize = size * SCALE
+  const offset  = -((decSize - size) / 2)
 
   return (
     <div
