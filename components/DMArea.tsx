@@ -159,23 +159,45 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setIsFriend(false)
   }
 
+  const fetchMessages = async () => {
+    const { data } = await supabase
+      .from('dm_messages')
+      .select('*, profiles(*)')
+      .eq('dm_id', dmId)
+      .order('created_at', { ascending: true })
+    if (data) setMessages(data as DmMessage[])
+  }
+
   useEffect(() => {
+    let firstSubscribe = true
+
     const ch = supabase.channel(`dm_${dmId}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'dm_messages',
         filter: `dm_id=eq.${dmId}`,
       }, async payload => {
         const msg = payload.new as DmMessage
-        setMessages(prev => {
-          if (prev.find(m => m.id === msg.id)) return prev
-          supabase.from('profiles').select('*').eq('id', msg.sender_id).single().then(({ data: profile }) => {
-            setMessages(p => p.find(m => m.id === msg.id) ? p : [...p, { ...msg, profiles: profile as Profile }])
-          })
-          return prev
-        })
+        const { data: prof } = await supabase.from('profiles').select('*').eq('id', msg.sender_id).single()
+        setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, { ...msg, profiles: prof as Profile }])
       })
-      .subscribe()
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          if (firstSubscribe) { firstSubscribe = false; return }
+          // Reconnected after a drop — fill any gaps
+          fetchMessages()
+        }
+      })
+
     return () => { supabase.removeChannel(ch) }
+  }, [dmId])
+
+  // Refetch when tab becomes visible again (catches missed messages while backgrounded)
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchMessages()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [dmId])
 
   useEffect(() => {

@@ -107,23 +107,46 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
 
+  const fetchMessages = async () => {
+    const { data } = await supabase
+      .from('group_messages')
+      .select('*, profiles(*)')
+      .eq('group_id', group.id)
+      .order('created_at', { ascending: true })
+    if (data) setMessages(data as GroupMessage[])
+  }
+
   // Realtime new messages
   useEffect(() => {
+    let firstSubscribe = true
+
     const ch = supabase.channel(`group_${group.id}`)
       .on('postgres_changes', {
         event: 'INSERT', schema: 'public', table: 'group_messages',
         filter: `group_id=eq.${group.id}`,
       }, async payload => {
         const msg = payload.new as GroupMessage
-        supabase.from('profiles').select('*').eq('id', msg.sender_id).single().then(({ data: profile }) => {
-          setMessages(prev => {
-            if (prev.find(m => m.id === msg.id)) return prev
-            return [...prev, { ...msg, profiles: profile as Profile }]
-          })
-        })
+        const { data: prof } = await supabase.from('profiles').select('*').eq('id', msg.sender_id).single()
+        setMessages(prev => prev.find(m => m.id === msg.id) ? prev : [...prev, { ...msg, profiles: prof as Profile }])
       })
-      .subscribe()
+      .subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          if (firstSubscribe) { firstSubscribe = false; return }
+          // Reconnected after a drop — fill any gaps
+          fetchMessages()
+        }
+      })
+
     return () => { supabase.removeChannel(ch) }
+  }, [group.id])
+
+  // Refetch when tab becomes visible again
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchMessages()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [group.id])
 
   // Realtime new members
