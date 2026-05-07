@@ -9,15 +9,19 @@ interface Props {
   onClick?: () => void
 }
 
-// Whiskers in the source image are at x=24 and x=264 (out of 288px) at y=144.
-// Solving for D so whiskers land exactly on the left/right circle edges gives D = size * 288/240 = size * 1.2.
-// The centering offset follows: offset = -(D - size) / 2
-const SCALE = 288 / 240  // ≈ 1.2
+// The decoration PNG (288×288) has opaque pixels starting at x=5 and ending at x=282.
+// To land those tips exactly on the left/right circle edges:
+//   decSize = size * 288 / 277
+//   offset  = -5 * size / 277
+const IMG_W   = 288
+const TIP_L   = 5    // leftmost opaque pixel
+const TIP_R   = 282  // rightmost opaque pixel
+const CONTENT = TIP_R - TIP_L  // 277
 
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
-  const dec    = decorationById(decoration)
-  const decSize = Math.round(size * SCALE)
-  const offset  = -Math.round((decSize - size) / 2)
+  const dec     = decorationById(decoration)
+  const decSize = size * IMG_W / CONTENT         // ≈ 1.04 × size
+  const offset  = -(TIP_L * size / CONTENT)     // ≈ -0.018 × size
 
   return (
     <div
