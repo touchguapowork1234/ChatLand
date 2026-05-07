@@ -82,6 +82,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [bgAnimType, setBgAnimType]       = useState<string>(profile.profile_bg_animation ?? 'shooting_stars')
   const [bgAnimOpacity, setBgAnimOpacity] = useState<number>(profile.profile_bg_opacity ?? 1)
   const [decoration, setDecoration]       = useState<string | null>(profile.profile_decoration ?? null)
+  const [glowEnabled, setGlowEnabled]     = useState(profile.profile_glow_enabled ?? false)
+  const [glowColor, setGlowColor]         = useState(profile.profile_glow_color ?? '#5865f2')
+  const [glowOpacity, setGlowOpacity]     = useState(profile.profile_glow_opacity ?? 0.8)
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -411,6 +414,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       profile_bg_animation:  bgAnimEnabled ? bgAnimType : null,
       profile_bg_opacity:    bgAnimOpacity,
       profile_decoration:    decoration,
+      profile_glow_enabled:  glowEnabled,
+      profile_glow_color:    glowColor,
+      profile_glow_opacity:  glowOpacity,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -882,6 +888,69 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                         </div>
 
                         {/* Divider */}
+                        <div className="border-t border-[#2b2d31]" />
+
+                        {/* Profile Glow */}
+                        <div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm text-[#dbdee1] font-medium">Profile Glow</p>
+                              <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">
+                                Adds a colored glow around your profile card border when others view it
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setGlowEnabled(v => !v)}
+                              className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${glowEnabled ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                            >
+                              <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${glowEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+
+                          {glowEnabled && (
+                            <div className="mt-3 bg-[#232428] rounded-lg p-3 space-y-3">
+                              {/* Color picker */}
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs text-[#949ba4] font-medium">Glow Color</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-mono text-[#dbdee1]">{glowColor.toUpperCase()}</span>
+                                  <input
+                                    type="color"
+                                    value={glowColor}
+                                    onChange={e => setGlowColor(e.target.value)}
+                                    className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+                                    style={{ WebkitAppearance: 'none' }}
+                                  />
+                                </div>
+                              </div>
+                              {/* Opacity slider */}
+                              <div>
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs text-[#949ba4] font-medium">Glow Opacity</p>
+                                  <span className="text-xs font-mono text-[#dbdee1]">{Math.round(glowOpacity * 100)}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={0.1}
+                                  max={1}
+                                  step={0.05}
+                                  value={glowOpacity}
+                                  onChange={e => setGlowOpacity(parseFloat(e.target.value))}
+                                  className="w-full accent-[#f0b132]"
+                                />
+                              </div>
+                              {/* Preview */}
+                              <div className="flex justify-center pt-1">
+                                <div
+                                  className="w-24 h-14 rounded-lg"
+                                  style={{ boxShadow: `0 0 20px 6px ${glowColor}${Math.round(glowOpacity * 255).toString(16).padStart(2, '0')}` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="border-t border-[#2b2d31]" />
 
                         {/* Background Animations */}

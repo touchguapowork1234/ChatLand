@@ -81,6 +81,13 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     if (e.target === e.currentTarget) onClose()
   }
 
+  const hexToRgba = (hex: string, alpha: number) => {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    return `rgba(${r},${g},${b},${alpha})`
+  }
+
   const cardColorActive = profile?.card_enabled === true && !!(profile?.card_primary || profile?.card_secondary)
   const cardPrimary   = cardColorActive ? profile!.card_primary!  : '#5865f2'
   const cardSecondary = cardColorActive ? (profile!.card_secondary ?? profile!.card_primary!) : '#7983f5'
@@ -118,9 +125,15 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             transition: tiltActive
               ? 'transform 0.08s ease-out, box-shadow 0.08s ease-out'
               : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: tiltActive
-              ? `${-tilt.y * 2}px ${tilt.x * 2}px 40px rgba(0,0,0,0.55), ${-tilt.y * 0.5}px ${tilt.x * 0.5}px 12px rgba(0,0,0,0.3)`
-              : '0 20px 50px rgba(0,0,0,0.4)',
+            boxShadow: (() => {
+              const glow = (profile?.profile_glow_enabled && profile.profile_glow_color)
+                ? `0 0 32px 8px ${hexToRgba(profile.profile_glow_color, profile.profile_glow_opacity ?? 0.8)}`
+                : null
+              const shadow = tiltActive
+                ? `${-tilt.y * 2}px ${tilt.x * 2}px 40px rgba(0,0,0,0.55), ${-tilt.y * 0.5}px ${tilt.x * 0.5}px 12px rgba(0,0,0,0.3)`
+                : '0 20px 50px rgba(0,0,0,0.4)'
+              return glow ? `${glow}, ${shadow}` : shadow
+            })(),
             willChange: 'transform',
           }}
         >

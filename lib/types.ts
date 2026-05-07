@@ -26,6 +26,9 @@ export type Profile = {
   profile_bg_animation?: string | null
   profile_bg_opacity?: number | null
   profile_decoration?: string | null
+  profile_glow_enabled?: boolean | null
+  profile_glow_color?: string | null
+  profile_glow_opacity?: number | null
 }
 
 export const userTag = (p?: Profile | null) =>
