@@ -827,8 +827,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                         <div className="mt-3 bg-[#1e1f22] rounded-lg p-4 space-y-4">
                           {([
                             {
-                              label: 'Profile Fade In',
-                              desc: 'Profile cards fade and scale in when opened',
+                              label: 'Better Profile View',
+                              desc: 'Profile cards fade in on open and tilt in 3D as you move your cursor over them',
                               state: animProfileFade,
                               set: (v: boolean) => { setAnimProfileFade(v); setAnimations(buildAnimConfig({ profileFade: v })) },
                             },

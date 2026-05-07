@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
@@ -50,6 +50,31 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     if (e.target === e.currentTarget) onClose()
   }
 
+  const cardRef = useRef<HTMLDivElement>(null)
+  const [tilt, setTilt]           = useState({ x: 0, y: 0 })
+  const [tiltActive, setTiltActive] = useState(false)
+  const [shine, setShine]         = useState({ x: 50, y: 50 })
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!document.documentElement.classList.contains('anim-profile-fade')) return
+    const card = cardRef.current
+    if (!card) return
+    const rect = card.getBoundingClientRect()
+    const dx = (e.clientX - (rect.left + rect.width  / 2)) / (rect.width  / 2)
+    const dy = (e.clientY - (rect.top  + rect.height / 2)) / (rect.height / 2)
+    setTilt({ x: -dy * 10, y: dx * 10 })
+    setShine({
+      x: ((e.clientX - rect.left) / rect.width)  * 100,
+      y: ((e.clientY - rect.top)  / rect.height) * 100,
+    })
+    setTiltActive(true)
+  }
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 })
+    setTiltActive(false)
+  }
+
   const cardColorActive = profile?.card_enabled === true && !!(profile?.card_primary || profile?.card_secondary)
   const cardPrimary   = cardColorActive ? profile!.card_primary!  : '#5865f2'
   const cardSecondary = cardColorActive ? (profile!.card_secondary ?? profile!.card_primary!) : '#7983f5'
@@ -67,7 +92,28 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onMouseDown={onBackdrop}
     >
-      <div className="profile-card-animate rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col" style={loading ? { background: '#232428' } : cardBodyStyle}>
+      <div
+        ref={cardRef}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        className="profile-card-animate relative rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col"
+        style={{
+          ...(loading ? { background: '#232428' } : cardBodyStyle),
+          transform: `perspective(900px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${tiltActive ? 1.015 : 1})`,
+          transition: tiltActive ? 'transform 0.08s ease-out' : 'transform 0.45s cubic-bezier(0.16, 1, 0.3, 1)',
+          willChange: 'transform',
+        }}
+      >
+        {/* 3D shine overlay */}
+        {tiltActive && (
+          <div
+            className="absolute inset-0 pointer-events-none z-20 rounded-lg"
+            style={{
+              background: `radial-gradient(ellipse at ${shine.x}% ${shine.y}%, rgba(255,255,255,0.13) 0%, transparent 65%)`,
+            }}
+          />
+        )}
+
         {/* Banner */}
         <div className="h-28 relative shrink-0" style={bannerStyle}>
           {profile?.banner_url && (
