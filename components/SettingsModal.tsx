@@ -26,7 +26,7 @@ const BANNER_OUT_H = 224
 
 export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const supabase = createClient()
-  const { setTheme } = useTheme()
+  const { setTheme, resetTheme } = useTheme()
   const [tab, setTab] = useState<Tab>('profile')
 
   // ── Profile tab ──
@@ -61,11 +61,19 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const bannerDragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
   const bannerFileRef = useRef<HTMLInputElement>(null)
 
-  // Colors
+  // Colors + toggles
+  const [themeEnabled,   setThemeEnabled]   = useState(profile.theme_enabled  ?? true)
+  const [cardEnabled,    setCardEnabled]    = useState(profile.card_enabled   ?? true)
   const [themePrimary,   setThemePrimary]   = useState(profile.theme_primary   ?? '#5865f2')
-  const [themeSecondary, setThemeSecondary] = useState(profile.theme_secondary  ?? '#7983f5')
-  const [cardPrimary,    setCardPrimary]    = useState(profile.card_primary     ?? '#5865f2')
-  const [cardSecondary,  setCardSecondary]  = useState(profile.card_secondary   ?? '#7983f5')
+  const [themeSecondary, setThemeSecondary] = useState(profile.theme_secondary ?? '#7983f5')
+  const [cardPrimary,    setCardPrimary]    = useState(profile.card_primary    ?? '#5865f2')
+  const [cardSecondary,  setCardSecondary]  = useState(profile.card_secondary  ?? '#7983f5')
+
+  const handleThemeToggle = (enabled: boolean) => {
+    setThemeEnabled(enabled)
+    if (enabled) setTheme(themePrimary, themeSecondary)
+    else resetTheme()
+  }
 
   const [premiumLoading, setPremiumLoading] = useState(false)
   const [premiumMsg, setPremiumMsg]         = useState<{ ok: boolean; text: string } | null>(null)
@@ -364,6 +372,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     }
 
     const patch: Partial<Profile> = {
+      theme_enabled:   themeEnabled,
+      card_enabled:    cardEnabled,
       theme_primary:   themePrimary,
       theme_secondary: themeSecondary,
       card_primary:    cardPrimary,
@@ -377,7 +387,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     } else {
       if (newBannerUrl) setBannerUrl(newBannerUrl)
       setBannerSrc(null)
-      setTheme(themePrimary, themeSecondary)
+      if (themeEnabled) setTheme(themePrimary, themeSecondary)
+      else resetTheme()
       setPremiumMsg({ ok: true, text: 'Premium settings saved!' })
       onUpdated({ ...profile, ...patch, banner_url: newBannerUrl ?? profile.banner_url })
     }
@@ -698,8 +709,17 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
                     {/* Interface theme colors */}
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Interface Theme</p>
-                      <div className="flex gap-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Interface Theme</p>
+                        <button
+                          type="button"
+                          onClick={() => handleThemeToggle(!themeEnabled)}
+                          className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${themeEnabled ? 'bg-[#23a55a]' : 'bg-[#4e5058]'}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${themeEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      <div className={`flex gap-6 transition-opacity ${themeEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
                         <div>
                           <p className="text-xs text-[#949ba4] mb-1.5">Primary</p>
                           <div className="flex items-center gap-2">
@@ -723,8 +743,17 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
                     {/* Profile card colors */}
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Profile Card Color</p>
-                      <div className="flex gap-6">
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Profile Card Color</p>
+                        <button
+                          type="button"
+                          onClick={() => setCardEnabled(v => !v)}
+                          className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${cardEnabled ? 'bg-[#23a55a]' : 'bg-[#4e5058]'}`}
+                        >
+                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${cardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                        </button>
+                      </div>
+                      <div className={`flex gap-6 transition-opacity ${cardEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
                         <div>
                           <p className="text-xs text-[#949ba4] mb-1.5">Primary</p>
                           <div className="flex items-center gap-2">

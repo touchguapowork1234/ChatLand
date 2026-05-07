@@ -8,6 +8,8 @@ export type Profile = {
   created_at: string
   is_premium?: boolean
   is_admin?: boolean
+  theme_enabled?: boolean
+  card_enabled?: boolean
   banner_url?: string | null
   theme_primary?: string | null
   theme_secondary?: string | null

@@ -50,8 +50,8 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
     if (e.target === e.currentTarget) onClose()
   }
 
-  const cardPrimary   = profile?.card_primary   ?? '#5865f2'
-  const cardSecondary = profile?.card_secondary ?? '#7983f5'
+  const cardPrimary   = (profile?.card_enabled !== false && profile?.card_primary)   ? profile.card_primary   : '#5865f2'
+  const cardSecondary = (profile?.card_enabled !== false && profile?.card_secondary) ? profile.card_secondary : '#7983f5'
 
   const bannerStyle: React.CSSProperties = profile?.banner_url
     ? {}
