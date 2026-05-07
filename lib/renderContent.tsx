@@ -18,7 +18,8 @@ export function renderContent(
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:underline break-all"
+          style={{ color: '#3b82f6' }}
+          className="hover:underline break-all"
           onClick={e => e.stopPropagation()}
         >
           {part}
