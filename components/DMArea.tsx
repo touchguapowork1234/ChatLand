@@ -28,6 +28,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           startCall, endCall, leaveCall, rejoinCall, acceptCall, declineCall, toggleMute } = useCall()
   const { openProfile } = useProfileCard()
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
+  const [nickname, setNickname]           = useState<string | null>(null)
+  const [nicknameModal, setNicknameModal] = useState(false)
+  const [nicknameInput, setNicknameInput] = useState('')
 
   const [messages, setMessages] = useState<DmMessage[]>(initialMessages)
   const [calls, setCalls]       = useState<Call[]>(initialCalls)
@@ -144,17 +147,20 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
   useEffect(() => {
     const load = async () => {
-      const [{ data: blockData }, { data: friendData }] = await Promise.all([
+      const [{ data: blockData }, { data: friendData }, { data: nickData }] = await Promise.all([
         supabase.from('blocks').select('blocker_id, blocked_id')
           .or(`and(blocker_id.eq.${currentUserId},blocked_id.eq.${otherUser.id}),and(blocker_id.eq.${otherUser.id},blocked_id.eq.${currentUserId})`),
         supabase.from('friend_requests').select('id').eq('status', 'accepted')
           .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUser.id}),and(sender_id.eq.${otherUser.id},receiver_id.eq.${currentUserId})`),
+        supabase.from('friend_nicknames').select('nickname')
+          .eq('user_id', currentUserId).eq('friend_id', otherUser.id).maybeSingle(),
       ])
       setBlockStatus({
         iBlockedThem: (blockData ?? []).some((b: { blocker_id: string }) => b.blocker_id === currentUserId),
         theyBlockedMe: (blockData ?? []).some((b: { blocker_id: string }) => b.blocker_id === otherUser.id),
       })
       setIsFriend((friendData ?? []).length > 0)
+      setNickname((nickData as { nickname: string } | null)?.nickname ?? null)
     }
     load()
   }, [dmId, currentUserId, otherUser.id])
@@ -374,6 +380,32 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const renderMentions = (text: string) =>
     renderContent(text, validMentionUsernames, currentUserUsername ?? undefined)
 
+  const openNicknameModal = () => {
+    setNicknameInput(nickname ?? '')
+    setNicknameModal(true)
+  }
+
+  const saveNickname = async () => {
+    const trimmed = nicknameInput.trim()
+    if (!trimmed) {
+      await supabase.from('friend_nicknames').delete().eq('user_id', currentUserId).eq('friend_id', otherUser.id)
+      setNickname(null)
+    } else {
+      await supabase.from('friend_nicknames').upsert(
+        { user_id: currentUserId, friend_id: otherUser.id, nickname: trimmed },
+        { onConflict: 'user_id,friend_id' }
+      )
+      setNickname(trimmed)
+    }
+    setNicknameModal(false)
+  }
+
+  const removeNickname = async () => {
+    await supabase.from('friend_nicknames').delete().eq('user_id', currentUserId).eq('friend_id', otherUser.id)
+    setNickname(null)
+    setNicknameModal(false)
+  }
+
   const fmt = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`
   const fmtTime = (d: string) => new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
@@ -405,6 +437,41 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         </div>
       )}
 
+      {/* Nickname modal */}
+      {nicknameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onMouseDown={e => { if (e.target === e.currentTarget) setNicknameModal(false) }}>
+          <div className="bg-[#2b2d31] rounded-xl shadow-2xl w-[360px] p-6">
+            <h2 className="text-lg font-bold text-[#dbdee1] mb-1">
+              {nickname ? 'Edit Nickname' : 'Add Nickname'}
+            </h2>
+            <p className="text-sm text-[#949ba4] mb-4">for <span className="text-[#dbdee1]">{displayName(otherUser)}</span></p>
+            <input
+              autoFocus
+              type="text"
+              value={nicknameInput}
+              onChange={e => setNicknameInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveNickname(); if (e.key === 'Escape') setNicknameModal(false) }}
+              placeholder="Enter a nickname…"
+              maxLength={32}
+              className="w-full bg-[#1e1f22] text-[#dbdee1] rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#5865f2] mb-4"
+            />
+            <div className="flex items-center gap-2 justify-end">
+              {nickname && (
+                <button onClick={removeNickname} className="text-sm text-red-400 hover:text-red-300 mr-auto transition-colors">
+                  Remove Nickname
+                </button>
+              )}
+              <button onClick={() => setNicknameModal(false)} className="px-4 py-1.5 rounded-lg text-sm text-[#949ba4] hover:text-[#dbdee1] transition-colors">
+                Cancel
+              </button>
+              <button onClick={saveNickname} className="px-4 py-1.5 rounded-lg text-sm bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium transition-colors">
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Hidden file input */}
       <input
         ref={fileInputRef}
@@ -421,7 +488,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           items={[
             { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
             ...(ctxMenu.userId !== currentUserId ? [
-              ...(isFriend ? [{ label: 'Remove Friend', danger: true, onClick: removeFriend }] : []),
+              ...(isFriend ? [
+                { label: nickname ? 'Edit Nickname' : 'Add Nickname', onClick: openNicknameModal },
+                { label: 'Remove Friend', danger: true, onClick: removeFriend },
+              ] : []),
               blockStatus.iBlockedThem
                 ? { label: 'Unblock', onClick: unblockOtherUser }
                 : { label: 'Block', danger: true, onClick: blockOtherUser },
@@ -438,7 +508,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
               ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
               : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
           </div>
-          <span className="font-semibold text-[#dbdee1]">{displayName(otherUser)}</span>
+          <span className="font-semibold text-[#dbdee1]">{nickname ?? displayName(otherUser)}</span>
         </div>
         {callState === 'idle' && (
           <button onClick={() => startCall(otherUser.id, otherUser)} title="Start voice call"
