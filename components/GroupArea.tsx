@@ -113,13 +113,33 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
     setCtxMenu({ x: e.clientX, y: e.clientY, userId })
   }
 
+  const kickMember = async (userId: string) => {
+    const kicked = members.find(m => m.user_id === userId)
+    const kickedName = kicked?.profiles?.display_name || kicked?.profiles?.username || 'Someone'
+    const kicker = members.find(m => m.user_id === currentUserId)
+    const kickerName = kicker?.profiles?.display_name || kicker?.profiles?.username || 'Someone'
+    await supabase.from('group_members').delete().eq('group_id', group.id).eq('user_id', userId)
+    await supabase.from('group_messages').insert({
+      group_id: group.id,
+      sender_id: currentUserId,
+      content: `${kickerName} kicked ${kickedName} from the group`,
+      type: 'system',
+    })
+    setMembers(prev => prev.filter(m => m.user_id !== userId))
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x} y={ctxMenu.y}
           onClose={() => setCtxMenu(null)}
-          items={[{ label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) }]}
+          items={[
+            { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
+            ...(currentUserId === group.created_by && ctxMenu.userId !== currentUserId
+              ? [{ label: 'Kick from group', danger: true, onClick: () => kickMember(ctxMenu.userId) }]
+              : []),
+          ]}
         />
       )}
       {showAddMember && (
