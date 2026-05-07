@@ -78,6 +78,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [profileTiltEnabled, setProfileTiltEnabled] = useState(profile.profile_tilt_enabled ?? false)
   const [bgAnimEnabled, setBgAnimEnabled] = useState(!!(profile.profile_bg_animation))
   const [bgAnimType, setBgAnimType]       = useState<string>(profile.profile_bg_animation ?? 'shooting_stars')
+  const [bgAnimOpacity, setBgAnimOpacity] = useState<number>(profile.profile_bg_opacity ?? 1)
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -405,6 +406,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       card_secondary:        cardSecondary,
       profile_tilt_enabled:  profileTiltEnabled,
       profile_bg_animation:  bgAnimEnabled ? bgAnimType : null,
+      profile_bg_opacity:    bgAnimOpacity,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -853,27 +855,46 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                           </div>
 
                           {bgAnimEnabled && (
-                            <div className="mt-3 grid grid-cols-2 gap-2">
-                              {([
-                                { id: 'shooting_stars', label: 'Shooting Stars', desc: 'Star field with a glowing moon and shooting streaks' },
-                                { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
-                              ] as { id: string; label: string; desc: string }[]).map(opt => (
-                                <button
-                                  key={opt.id}
-                                  type="button"
-                                  onClick={() => setBgAnimType(opt.id)}
-                                  className={`text-left p-3 rounded-lg border-2 transition-colors ${
-                                    bgAnimType === opt.id
-                                      ? 'border-[#f0b132] bg-[#f0b132]/10'
-                                      : 'border-[#3f4147] bg-[#232428] hover:border-[#5865f2]'
-                                  }`}
-                                >
-                                  <p className={`text-sm font-semibold ${bgAnimType === opt.id ? 'text-[#f0b132]' : 'text-[#dbdee1]'}`}>
-                                    {opt.label}
-                                  </p>
-                                  <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">{opt.desc}</p>
-                                </button>
-                              ))}
+                            <div className="mt-3 space-y-3">
+                              <div className="grid grid-cols-2 gap-2">
+                                {([
+                                  { id: 'shooting_stars', label: 'Shooting Stars', desc: 'Star field with a glowing moon and shooting streaks' },
+                                  { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
+                                ] as { id: string; label: string; desc: string }[]).map(opt => (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => setBgAnimType(opt.id)}
+                                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                                      bgAnimType === opt.id
+                                        ? 'border-[#f0b132] bg-[#f0b132]/10'
+                                        : 'border-[#3f4147] bg-[#232428] hover:border-[#5865f2]'
+                                    }`}
+                                  >
+                                    <p className={`text-sm font-semibold ${bgAnimType === opt.id ? 'text-[#f0b132]' : 'text-[#dbdee1]'}`}>
+                                      {opt.label}
+                                    </p>
+                                    <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">{opt.desc}</p>
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* Opacity slider */}
+                              <div className="bg-[#232428] rounded-lg p-3">
+                                <div className="flex items-center justify-between mb-2">
+                                  <p className="text-xs text-[#949ba4] font-medium">Opacity</p>
+                                  <span className="text-xs font-mono text-[#dbdee1]">{Math.round(bgAnimOpacity * 100)}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min={0.1}
+                                  max={1}
+                                  step={0.05}
+                                  value={bgAnimOpacity}
+                                  onChange={e => setBgAnimOpacity(parseFloat(e.target.value))}
+                                  className="w-full accent-[#f0b132]"
+                                />
+                              </div>
                             </div>
                           )}
                         </div>

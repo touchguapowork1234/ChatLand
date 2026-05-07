@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react'
 interface Star { x: number; y: number; r: number; a: number }
 interface Streak { x: number; y: number; len: number; speed: number; angle: number; life: number; maxLife: number }
 
-export function ShootingStarsAnimation() {
+export function ShootingStarsAnimation({ opacity = 1 }: { opacity?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -160,7 +160,7 @@ export function ShootingStarsAnimation() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ borderRadius: 'inherit' }}
+      style={{ borderRadius: 'inherit', opacity }}
     />
   )
 }
@@ -169,7 +169,7 @@ export function ShootingStarsAnimation() {
 
 interface Flake { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number }
 
-export function SnowAnimation() {
+export function SnowAnimation({ opacity = 1 }: { opacity?: number }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -251,7 +251,7 @@ export function SnowAnimation() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none"
-      style={{ borderRadius: 'inherit' }}
+      style={{ borderRadius: 'inherit', opacity }}
     />
   )
 }

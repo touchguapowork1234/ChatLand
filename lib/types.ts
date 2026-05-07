@@ -24,6 +24,7 @@ export type Profile = {
   anim_smooth_transitions?: boolean
   profile_tilt_enabled?: boolean
   profile_bg_animation?: string | null
+  profile_bg_opacity?: number | null
 }
 
 export const userTag = (p?: Profile | null) =>

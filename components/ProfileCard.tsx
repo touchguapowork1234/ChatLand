@@ -96,8 +96,8 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
       onMouseDown={onBackdrop}
     >
       {/* Background animation layer — behind everything */}
-      {profile?.profile_bg_animation === 'shooting_stars' && <ShootingStarsAnimation />}
-      {profile?.profile_bg_animation === 'snow' && <SnowAnimation />}
+      {profile?.profile_bg_animation === 'shooting_stars' && <ShootingStarsAnimation opacity={profile.profile_bg_opacity ?? 1} />}
+      {profile?.profile_bg_animation === 'snow' && <SnowAnimation opacity={profile.profile_bg_opacity ?? 1} />}
       {/* Perspective wrapper — captures mouse for tilt */}
       <div
         ref={wrapperRef}
