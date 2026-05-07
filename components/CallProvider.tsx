@@ -474,6 +474,32 @@ export default function CallProvider({ userId, children }: { userId: string; chi
           setPartnerMuted(false)
           setCallState('alone')
         })
+        // Partner may leave and rejoin again — handle their offer each time
+        .on('broadcast', { event: 'rejoin_offer' }, async ({ payload }) => {
+          if (callStateRef.current !== 'alone') return
+          try {
+            const stream2 = localRef.current
+            if (!stream2) return
+            const pc2 = makePC()
+            stream2.getTracks().forEach(t => pc2.addTrack(t, stream2))
+            const iceBuf: RTCIceCandidateInit[] = []
+            pc2.onicecandidate = ({ candidate }) => { if (candidate) iceBuf.push(candidate.toJSON()) }
+            await pc2.setRemoteDescription({ type: payload.type, sdp: payload.sdp })
+            const answer = await pc2.createAnswer()
+            await pc2.setLocalDescription(answer)
+            sig.send({ type: 'broadcast', event: 'answer', payload: { sdp: answer.sdp, type: answer.type } })
+            for (const c of iceBuf) {
+              sig.send({ type: 'broadcast', event: 'ice', payload: { candidate: c, from: userId } })
+            }
+            iceBuf.length = 0
+            pc2.onicecandidate = ({ candidate }) => {
+              if (candidate) sig.send({ type: 'broadcast', event: 'ice', payload: { candidate: candidate.toJSON(), from: userId } })
+            }
+            broadcastMute(isMutedRef.current)
+            setCallState('active')
+            startTimer()
+          } catch { cleanup() }
+        })
         .subscribe(async (status) => {
           if (status === 'SUBSCRIBED') {
             const offer = await pc.createOffer()
