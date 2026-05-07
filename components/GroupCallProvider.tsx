@@ -1,10 +1,18 @@
 'use client'
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { Mic, MicOff, PhoneOff } from 'lucide-react'
+import { Mic, MicOff, Phone, PhoneOff, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { displayName } from '@/lib/types'
 import type { Profile } from '@/lib/types'
+
+type IncomingGroupCall = {
+  callId: string
+  groupId: string
+  groupName: string
+  starterName: string
+  starterAvatar: string | null
+}
 
 interface GroupCallCtx {
   gcInCall: boolean
@@ -46,6 +54,68 @@ export default function GroupCallProvider({ userId, children }: { userId: string
   const [gcGroupName, setGcGroupName] = useState<string | null>(null)
   const [gcMuted, setGcMuted]         = useState(false)
 
+  // incoming ring state
+  const [gcRinging, setGcRinging]           = useState(false)
+  const [gcIncoming, setGcIncomingState]    = useState<IncomingGroupCall | null>(null)
+  const gcIncomingRef  = useRef<IncomingGroupCall | null>(null)
+  const gcInCallRef    = useRef(false)
+  const ringRef        = useRef<HTMLAudioElement | null>(null)
+
+  const setGcIncoming = (v: IncomingGroupCall | null) => {
+    gcIncomingRef.current = v
+    setGcIncomingState(v)
+  }
+
+  // keep gcInCallRef in sync
+  useEffect(() => { gcInCallRef.current = gcInCall }, [gcInCall])
+
+  // ring sound
+  useEffect(() => {
+    if (gcRinging) {
+      const audio = new Audio('/incoming_ring_new.wav')
+      audio.loop = true
+      audio.play().catch(() => {})
+      ringRef.current = audio
+    } else {
+      if (ringRef.current) {
+        ringRef.current.pause()
+        ringRef.current.currentTime = 0
+        ringRef.current = null
+      }
+    }
+    return () => {
+      if (ringRef.current) {
+        ringRef.current.pause()
+        ringRef.current = null
+      }
+    }
+  }, [gcRinging])
+
+  // listen for incoming group call notifications on personal channel
+  useEffect(() => {
+    const ch = supabase.channel(`gcnotify:${userId}`)
+      .on('broadcast', { event: 'incoming_group_call' }, ({ payload }) => {
+        if (gcInCallRef.current) return
+        setGcIncoming({
+          callId:      payload.callId,
+          groupId:     payload.groupId,
+          groupName:   payload.groupName,
+          starterName: payload.starterName,
+          starterAvatar: payload.starterAvatar ?? null,
+        })
+        setGcRinging(true)
+      })
+      .on('broadcast', { event: 'group_call_ended' }, ({ payload }) => {
+        if (gcIncomingRef.current?.callId === payload.callId) {
+          setGcRinging(false)
+          setGcIncoming(null)
+        }
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(ch) }
+  }, [userId])
+
   // refs — persist across renders without triggering re-renders
   const gcCallIdRef  = useRef<string | null>(null)
   const gcGroupIdRef = useRef<string | null>(null)
@@ -62,6 +132,31 @@ export default function GroupCallProvider({ userId, children }: { userId: string
   const remoteIceBuffers = useRef<Map<string, RTCIceCandidateInit[]>>(new Map())
   // track which peers have switched to live ICE
   const liveIcePeers = useRef<Set<string>>(new Set())
+
+  // ─── notifyGroupMembers ─────────────────────────────────────────────────────
+  const notifyGroupMembers = async (
+    groupId: string,
+    event: string,
+    payload: Record<string, unknown>
+  ) => {
+    const { data: members } = await supabase
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId)
+
+    if (!members) return
+
+    for (const { user_id } of members) {
+      if (user_id === userId) continue
+      const ch = supabase.channel(`gcnotify:${user_id}`)
+      ch.subscribe(status => {
+        if (status === 'SUBSCRIBED') {
+          ch.send({ type: 'broadcast', event, payload })
+          setTimeout(() => supabase.removeChannel(ch), 1500)
+        }
+      })
+    }
+  }
 
   // ─── makeGcPeer ─────────────────────────────────────────────────────────────
   const makeGcPeer = (targetUserId: string): RTCPeerConnection => {
@@ -130,7 +225,6 @@ export default function GroupCallProvider({ userId, children }: { userId: string
       pc.onicecandidate = ({ candidate }) => {
         if (!candidate) return
         if (liveIcePeers.current.has(fromId)) {
-          // Live mode: send immediately
           ch.send({
             type: 'broadcast', event: 'ice',
             payload: { from: userId, to: fromId, candidate: candidate.toJSON() },
@@ -244,7 +338,6 @@ export default function GroupCallProvider({ userId, children }: { userId: string
       if (!pc) return
 
       if (!pc.remoteDescription) {
-        // Buffer until remote desc is set
         const buf = remoteIceBuffers.current.get(fromId) ?? []
         buf.push(payload.candidate)
         remoteIceBuffers.current.set(fromId, buf)
@@ -290,7 +383,6 @@ export default function GroupCallProvider({ userId, children }: { userId: string
   const startGroupCall = async (groupId: string, groupName: string) => {
     if (gcInCall) return
 
-    // Get own profile for system message
     const { data: ownProfile } = await supabase
       .from('profiles')
       .select('*')
@@ -315,14 +407,21 @@ export default function GroupCallProvider({ userId, children }: { userId: string
       type: 'system',
     })
 
+    // Notify all group members so they get an incoming ring
+    await notifyGroupMembers(groupId, 'incoming_group_call', {
+      callId:       call.id,
+      groupId,
+      groupName,
+      starterName:  myName,
+      starterAvatar: (ownProfile as Profile)?.avatar_url ?? null,
+    })
+
     await _doJoin(call.id, groupId, groupName)
   }
 
   // ─── joinGroupCall ───────────────────────────────────────────────────────────
   const joinGroupCall = async (callId: string, groupId: string, groupName: string) => {
     if (gcInCall) return
-
-    // Insert participant row (upsert handled in _doJoin)
     await _doJoin(callId, groupId, groupName)
   }
 
@@ -380,7 +479,9 @@ export default function GroupCallProvider({ userId, children }: { userId: string
           .update({ status: 'ended', ended_at: new Date().toISOString() })
           .eq('id', callId)
 
-        // System message
+        // Dismiss ringing modals for anyone who hasn't answered yet
+        await notifyGroupMembers(groupId, 'group_call_ended', { callId })
+
         const { data: ownProfile } = await supabase
           .from('profiles')
           .select('*')
@@ -405,6 +506,32 @@ export default function GroupCallProvider({ userId, children }: { userId: string
     setGcMuted(false)
   }
 
+  // ─── acceptGroupCall ─────────────────────────────────────────────────────────
+  const acceptGroupCall = async () => {
+    const inc = gcIncomingRef.current
+    if (!inc) return
+
+    // Verify call is still active before joining
+    const { data: callData } = await supabase
+      .from('group_calls')
+      .select('status')
+      .eq('id', inc.callId)
+      .single()
+
+    setGcRinging(false)
+    setGcIncoming(null)
+
+    if (!callData || callData.status !== 'active') return
+
+    await joinGroupCall(inc.callId, inc.groupId, inc.groupName)
+  }
+
+  // ─── declineGroupCall ────────────────────────────────────────────────────────
+  const declineGroupCall = () => {
+    setGcRinging(false)
+    setGcIncoming(null)
+  }
+
   // ─── toggleGcMute ───────────────────────────────────────────────────────────
   const toggleGcMute = () => {
     gcLocal.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled })
@@ -417,7 +544,6 @@ export default function GroupCallProvider({ userId, children }: { userId: string
       const callId = gcCallIdRef.current
       if (!callId) return
 
-      // Best-effort: broadcast leave and delete row
       if (gcChannel.current) {
         gcChannel.current.send({
           type: 'broadcast', event: 'leave',
@@ -441,7 +567,37 @@ export default function GroupCallProvider({ userId, children }: { userId: string
     }}>
       {children}
 
-      {/* Floating overlay */}
+      {/* Incoming group call modal */}
+      {gcRinging && gcIncoming && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+          <div className="bg-[#2b2d31] rounded-2xl p-8 w-full max-w-sm shadow-2xl text-center">
+            <div className="w-20 h-20 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center mx-auto mb-4">
+              {gcIncoming.starterAvatar
+                ? <img src={gcIncoming.starterAvatar} alt="" className="w-full h-full object-cover rounded-full" />
+                : <Users className="w-8 h-8 text-white" />}
+            </div>
+            <p className="text-[#949ba4] text-sm mb-1">Incoming group call</p>
+            <p className="text-xl font-bold text-[#dbdee1] mb-1">{gcIncoming.groupName}</p>
+            <p className="text-sm text-[#949ba4] mb-8">Started by {gcIncoming.starterName}</p>
+            <div className="flex gap-6 justify-center">
+              <button
+                onClick={declineGroupCall}
+                className="w-14 h-14 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center text-white transition-colors"
+              >
+                <PhoneOff className="w-6 h-6" />
+              </button>
+              <button
+                onClick={acceptGroupCall}
+                className="w-14 h-14 rounded-full bg-[#23a55a] hover:bg-[#1e8f4e] flex items-center justify-center text-white transition-colors"
+              >
+                <Phone className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating overlay for active call */}
       {gcInCall && gcGroupName && (
         <div className="fixed bottom-6 right-6 bg-[#232428] border border-[#3f4147] rounded-2xl p-4 shadow-2xl z-40 w-60">
           <div className="flex items-center gap-3 mb-3">
