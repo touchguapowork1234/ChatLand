@@ -32,6 +32,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [groups, setGroups]     = useState<GroupChat[]>([])
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
+  const [friendIds, setFriendIds] = useState<Set<string>>(new Set())
   const [newChannelName, setNewChannelName] = useState('')
   const [showNewChannel, setShowNewChannel] = useState(false)
   const [copied, setCopied]     = useState(false)
@@ -47,11 +48,17 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
     } catch {}
   }, [profile.id])
 
-  // Load blocked user IDs
+  // Load blocked user IDs + friend IDs
   useEffect(() => {
     if (serverId) return
     supabase.from('blocks').select('blocked_id').eq('blocker_id', profile.id)
       .then(({ data }) => setBlockedIds(new Set((data ?? []).map((b: { blocked_id: string }) => b.blocked_id))))
+    supabase.from('friend_requests').select('sender_id, receiver_id')
+      .eq('status', 'accepted')
+      .or(`sender_id.eq.${profile.id},receiver_id.eq.${profile.id}`)
+      .then(({ data }) => setFriendIds(new Set((data ?? []).map((r: { sender_id: string; receiver_id: string }) =>
+        r.sender_id === profile.id ? r.receiver_id : r.sender_id
+      ))))
   }, [profile.id, serverId])
 
   const blockDMUser = async (userId: string) => {
@@ -62,6 +69,12 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const unblockDMUser = async (userId: string) => {
     await supabase.from('blocks').delete().eq('blocker_id', profile.id).eq('blocked_id', userId)
     setBlockedIds(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
+
+  const removeDMFriend = async (userId: string) => {
+    await supabase.from('friend_requests').delete().eq('status', 'accepted')
+      .or(`and(sender_id.eq.${profile.id},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${profile.id})`)
+    setFriendIds(prev => { const next = new Set(prev); next.delete(userId); return next })
   }
 
   const saveHidden = (next: Set<string>) => {
@@ -193,6 +206,9 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
             onClose={() => setCtxMenu(null)}
             items={[
               { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
+              ...(friendIds.has(ctxMenu.userId)
+                ? [{ label: 'Remove Friend', danger: true, onClick: () => removeDMFriend(ctxMenu.userId) }]
+                : []),
               blockedIds.has(ctxMenu.userId)
                 ? { label: 'Unblock', onClick: () => unblockDMUser(ctxMenu.userId) }
                 : { label: 'Block', danger: true, onClick: () => blockDMUser(ctxMenu.userId) },

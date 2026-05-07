@@ -36,6 +36,8 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
   const [showMembers, setShowMembers] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
   const [ctxMenu, setCtxMenu]   = useState<{ x: number; y: number; userId: string } | null>(null)
+  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set())
+  const [friendIds, setFriendIds]   = useState<Set<string>>(new Set())
   const bottomRef    = useRef<HTMLDivElement>(null)
   const inputRef     = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -142,6 +144,32 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
     return () => { supabase.removeChannel(ch) }
   }, [group.id])
 
+  useEffect(() => {
+    supabase.from('blocks').select('blocked_id').eq('blocker_id', currentUserId)
+      .then(({ data }) => setBlockedIds(new Set((data ?? []).map((b: { blocked_id: string }) => b.blocked_id))))
+    supabase.from('friend_requests').select('sender_id, receiver_id').eq('status', 'accepted')
+      .or(`sender_id.eq.${currentUserId},receiver_id.eq.${currentUserId}`)
+      .then(({ data }) => setFriendIds(new Set((data ?? []).map((r: { sender_id: string; receiver_id: string }) =>
+        r.sender_id === currentUserId ? r.receiver_id : r.sender_id
+      ))))
+  }, [currentUserId])
+
+  const blockGroupUser = async (userId: string) => {
+    await supabase.from('blocks').insert({ blocker_id: currentUserId, blocked_id: userId })
+    setBlockedIds(prev => new Set([...prev, userId]))
+  }
+
+  const unblockGroupUser = async (userId: string) => {
+    await supabase.from('blocks').delete().eq('blocker_id', currentUserId).eq('blocked_id', userId)
+    setBlockedIds(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
+
+  const removeGroupFriend = async (userId: string) => {
+    await supabase.from('friend_requests').delete().eq('status', 'accepted')
+      .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${userId}),and(sender_id.eq.${userId},receiver_id.eq.${currentUserId})`)
+    setFriendIds(prev => { const next = new Set(prev); next.delete(userId); return next })
+  }
+
   const send = async () => {
     const trimmed = content.trim()
     if (!trimmed && !pendingFile || sending || uploading) return
@@ -246,9 +274,17 @@ export default function GroupArea({ group, initialMessages, initialMembers, curr
           onClose={() => setCtxMenu(null)}
           items={[
             { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
-            ...(currentUserId === group.created_by && ctxMenu.userId !== currentUserId
-              ? [{ label: 'Kick from group', danger: true, onClick: () => kickMember(ctxMenu.userId) }]
-              : []),
+            ...(ctxMenu.userId !== currentUserId ? [
+              ...(currentUserId === group.created_by
+                ? [{ label: 'Kick from group', danger: true, onClick: () => kickMember(ctxMenu.userId) }]
+                : []),
+              ...(friendIds.has(ctxMenu.userId)
+                ? [{ label: 'Remove Friend', danger: true, onClick: () => removeGroupFriend(ctxMenu.userId) }]
+                : []),
+              blockedIds.has(ctxMenu.userId)
+                ? { label: 'Unblock', onClick: () => unblockGroupUser(ctxMenu.userId) }
+                : { label: 'Block', danger: true, onClick: () => blockGroupUser(ctxMenu.userId) },
+            ] : []),
           ]}
         />
       )}

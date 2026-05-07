@@ -31,6 +31,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const [calls, setCalls]       = useState<Call[]>(initialCalls)
   const [blockStatus, setBlockStatus] = useState({ iBlockedThem: false, theyBlockedMe: false })
   const isBlocked = blockStatus.iBlockedThem || blockStatus.theyBlockedMe
+  const [isFriend, setIsFriend] = useState(false)
   const [content, setContent]   = useState('')
   const [sending, setSending]   = useState(false)
   const [editing, setEditing]       = useState<string | null>(null)
@@ -128,12 +129,17 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase.from('blocks').select('blocker_id, blocked_id')
-        .or(`and(blocker_id.eq.${currentUserId},blocked_id.eq.${otherUser.id}),and(blocker_id.eq.${otherUser.id},blocked_id.eq.${currentUserId})`)
+      const [{ data: blockData }, { data: friendData }] = await Promise.all([
+        supabase.from('blocks').select('blocker_id, blocked_id')
+          .or(`and(blocker_id.eq.${currentUserId},blocked_id.eq.${otherUser.id}),and(blocker_id.eq.${otherUser.id},blocked_id.eq.${currentUserId})`),
+        supabase.from('friend_requests').select('id').eq('status', 'accepted')
+          .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUser.id}),and(sender_id.eq.${otherUser.id},receiver_id.eq.${currentUserId})`),
+      ])
       setBlockStatus({
-        iBlockedThem: (data ?? []).some((b: { blocker_id: string }) => b.blocker_id === currentUserId),
-        theyBlockedMe: (data ?? []).some((b: { blocker_id: string }) => b.blocker_id === otherUser.id),
+        iBlockedThem: (blockData ?? []).some((b: { blocker_id: string }) => b.blocker_id === currentUserId),
+        theyBlockedMe: (blockData ?? []).some((b: { blocker_id: string }) => b.blocker_id === otherUser.id),
       })
+      setIsFriend((friendData ?? []).length > 0)
     }
     load()
   }, [dmId, currentUserId, otherUser.id])
@@ -146,6 +152,12 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const unblockOtherUser = async () => {
     await supabase.from('blocks').delete().eq('blocker_id', currentUserId).eq('blocked_id', otherUser.id)
     setBlockStatus(s => ({ ...s, iBlockedThem: false }))
+  }
+
+  const removeFriend = async () => {
+    await supabase.from('friend_requests').delete().eq('status', 'accepted')
+      .or(`and(sender_id.eq.${currentUserId},receiver_id.eq.${otherUser.id}),and(sender_id.eq.${otherUser.id},receiver_id.eq.${currentUserId})`)
+    setIsFriend(false)
   }
 
   useEffect(() => {
@@ -301,6 +313,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           items={[
             { label: 'View Profile', onClick: () => openProfile(ctxMenu.userId) },
             ...(ctxMenu.userId !== currentUserId ? [
+              ...(isFriend ? [{ label: 'Remove Friend', danger: true, onClick: removeFriend }] : []),
               blockStatus.iBlockedThem
                 ? { label: 'Unblock', onClick: unblockOtherUser }
                 : { label: 'Block', danger: true, onClick: blockOtherUser },
