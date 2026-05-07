@@ -6,6 +6,7 @@ export type Decoration = {
 
 export const DECORATIONS: Decoration[] = [
   { id: 'cat_ears', label: 'Cat Ears', src: '/decorations/cat_ears.png' },
+  { id: 'frozen',   label: 'Frozen',   src: '/decorations/frozen.png'   },
 ]
 
 export const decorationById = (id: string | null | undefined): Decoration | undefined =>
