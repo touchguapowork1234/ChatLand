@@ -9,7 +9,7 @@ interface Props {
   onClick?: () => void
 }
 
-const SCALE = 0.5
+const SCALE = 1.2
 
 export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
   const dec     = decorationById(decoration)
