@@ -71,8 +71,6 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   const handleThemeToggle = (enabled: boolean) => {
     setThemeEnabled(enabled)
-    if (enabled) setTheme(themePrimary, themeSecondary)
-    else resetTheme()
   }
 
   const [premiumLoading, setPremiumLoading] = useState(false)
@@ -716,7 +714,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                           onClick={() => handleThemeToggle(!themeEnabled)}
                           className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${themeEnabled ? 'bg-[#23a55a]' : 'bg-[#4e5058]'}`}
                         >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${themeEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                          <span className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${themeEnabled ? 'translate-x-[20px]' : 'translate-x-0'}`} />
                         </button>
                       </div>
                       <div className={`flex gap-6 transition-opacity ${themeEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
@@ -750,7 +748,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                           onClick={() => setCardEnabled(v => !v)}
                           className={`relative w-10 h-5 rounded-full transition-colors duration-200 shrink-0 ${cardEnabled ? 'bg-[#23a55a]' : 'bg-[#4e5058]'}`}
                         >
-                          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${cardEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                          <span className={`absolute left-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200 ${cardEnabled ? 'translate-x-[20px]' : 'translate-x-0'}`} />
                         </button>
                       </div>
                       <div className={`flex gap-6 transition-opacity ${cardEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
