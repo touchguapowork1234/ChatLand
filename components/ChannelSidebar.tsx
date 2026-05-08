@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
-import { Hash, Plus, Copy, Check, UserPlus, X, Users } from 'lucide-react'
+import { useParams, usePathname, useRouter } from 'next/navigation'
+import { Hash, Plus, Copy, Check, UserPlus, X, Users, Bot } from 'lucide-react'
 import { clsx } from 'clsx'
 import { createClient } from '@/lib/supabase/client'
 import type { Channel, Profile, Server } from '@/lib/types'
@@ -17,6 +17,7 @@ import GroupIconCropModal from './GroupIconCropModal'
 export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const params = useParams()
   const router = useRouter()
+  const pathname = usePathname()
   const supabase = createClient()
   const { openProfile } = useProfileCard()
   const { dms, groups, hiddenIds, saveHidden, unreadCounts, clearUnread, setGroups } = useUnread()
@@ -45,6 +46,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [iconUploadGroupId, setIconUploadGroupId] = useState<string | null>(null)
   const [cropFile, setCropFile] = useState<{ file: File; groupId: string } | null>(null)
   const groupIconInputRef = useRef<HTMLInputElement>(null)
+  const [aiCharacter, setAiCharacter] = useState<{ name: string; avatar_url: string | null } | null>(null)
 
   // Load blocked user IDs + friend IDs + nicknames
   useEffect(() => {
@@ -63,6 +65,10 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
         ;(data ?? []).forEach((n: { friend_id: string; nickname: string }) => map.set(n.friend_id, n.nickname))
         setNicknames(map)
       })
+    if (profile.has_ai_access) {
+      supabase.from('ai_character').select('name, avatar_url').eq('id', 1).single()
+        .then(({ data }) => { if (data) setAiCharacter(data as { name: string; avatar_url: string | null }) })
+    }
   }, [profile.id, serverId])
 
   const blockDMUser = async (userId: string) => {
@@ -350,6 +356,34 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
           </div>
 
           <div className="flex-1 overflow-y-auto px-2 py-2">
+            {/* AI Chatbot */}
+            {profile.has_ai_access && aiCharacter && (
+              <>
+                <div className="px-2 pt-2 pb-1">
+                  <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide">AI</p>
+                </div>
+                <button
+                  onClick={() => router.push('/ai')}
+                  className={clsx(
+                    'w-full flex items-center gap-2 px-2 py-2 rounded transition-colors mb-1',
+                    pathname === '/ai'
+                      ? 'bg-[#404249] text-[#dbdee1]'
+                      : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
+                  )}
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden shrink-0 flex items-center justify-center">
+                    {aiCharacter.avatar_url
+                      ? <img src={aiCharacter.avatar_url} alt="" className="w-full h-full object-cover" />
+                      : <Bot className="w-4 h-4 text-white" />}
+                  </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium truncate">{aiCharacter.name}</p>
+                    <p className="text-xs text-[#6d6f78] truncate">AI Assistant</p>
+                  </div>
+                </button>
+              </>
+            )}
+
             {/* Direct Messages */}
             <div className="px-2 pt-2 pb-1">
               <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide">Direct Messages</p>

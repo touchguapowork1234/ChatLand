@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useState } from 'react'
-import { X, Upload, ZoomIn, ZoomOut, Sparkles, Loader2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { X, Upload, ZoomIn, ZoomOut, Sparkles, Loader2, Bot } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
@@ -109,6 +109,31 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   const [premiumLoading, setPremiumLoading] = useState(false)
   const [premiumMsg, setPremiumMsg]         = useState<{ ok: boolean; text: string } | null>(null)
+
+  // ── AI Character ──
+  const [hasAiAccess, setHasAiAccess]   = useState(profile.has_ai_access ?? false)
+  const [aiCodeInput, setAiCodeInput]   = useState('')
+  const [aiCodeLoading, setAiCodeLoading] = useState(false)
+  const [aiCodeMsg, setAiCodeMsg]       = useState<{ ok: boolean; text: string } | null>(null)
+
+  // Mako-only AI character editor
+  const [aiCharName, setAiCharName]         = useState('')
+  const [aiCharAvatarUrl, setAiCharAvatarUrl] = useState<string | null>(null)
+  const [aiCharNewFile, setAiCharNewFile]   = useState<File | null>(null)
+  const [aiCharPreview, setAiCharPreview]   = useState<string | null>(null)
+  const [aiCharLoading, setAiCharLoading]   = useState(false)
+  const [aiCharMsg, setAiCharMsg]           = useState<{ ok: boolean; text: string } | null>(null)
+  const aiCharFileRef = useRef<HTMLInputElement>(null)
+
+  // Load AI character data if this is mako
+  useEffect(() => {
+    if (profile.username !== 'mako' || profile.tag !== '0000') return
+    supabase.from('ai_character').select('name, avatar_url').eq('id', 1).single()
+      .then(({ data }) => {
+        if (data) { setAiCharName(data.name); setAiCharAvatarUrl(data.avatar_url) }
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // ── Admin tab ──
   const [adminCodes, setAdminCodes]   = useState<PremiumCode[]>([])
@@ -311,6 +336,78 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     setCodeMsg({ ok: true, text: 'Yasu Premium activated!' })
     onUpdated({ ...profile, is_premium: true })
     setCodeLoading(false)
+  }
+
+  // ── Redeem AI character code ──
+  const redeemAiCode = async () => {
+    setAiCodeMsg(null)
+    const code = aiCodeInput.trim()
+    if (!code) return
+    setAiCodeLoading(true)
+
+    const res = await fetch('/api/redeem-ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code }),
+    })
+    const data = await res.json()
+
+    if (!data.ok) {
+      setAiCodeMsg({ ok: false, text: data.message ?? 'Invalid code.' })
+      setAiCodeLoading(false); return
+    }
+
+    setHasAiAccess(true)
+    setAiCodeInput('')
+    setAiCodeMsg({ ok: true, text: 'AI Character unlocked!' })
+    onUpdated({ ...profile, has_ai_access: true })
+    setAiCodeLoading(false)
+  }
+
+  // ── Save AI character (mako only) ──
+  const saveAiCharacter = async () => {
+    setAiCharMsg(null)
+    setAiCharLoading(true)
+    let newAvatarUrl = aiCharAvatarUrl
+
+    if (aiCharNewFile) {
+      const src = URL.createObjectURL(aiCharNewFile)
+      const img = new Image()
+      img.src = src
+      await new Promise(resolve => { img.onload = resolve })
+      const canvas = document.createElement('canvas')
+      canvas.width = 256; canvas.height = 256
+      const ctx = canvas.getContext('2d')!
+      const scale = Math.max(256 / img.width, 256 / img.height)
+      const w = img.width * scale, h = img.height * scale
+      ctx.drawImage(img, (256 - w) / 2, (256 - h) / 2, w, h)
+      URL.revokeObjectURL(src)
+      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/jpeg', 0.9))
+      const { error: uploadErr } = await supabase.storage
+        .from('avatars')
+        .upload('ai_character.jpg', blob, { upsert: true, contentType: 'image/jpeg' })
+      if (!uploadErr) {
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl('ai_character.jpg')
+        newAvatarUrl = `${publicUrl}?t=${Date.now()}`
+      }
+    }
+
+    const trimmedName = aiCharName.trim() || 'Mako AI'
+    const { error } = await supabase
+      .from('ai_character')
+      .update({ name: trimmedName, avatar_url: newAvatarUrl, updated_at: new Date().toISOString() })
+      .eq('id', 1)
+
+    if (error) {
+      setAiCharMsg({ ok: false, text: 'Failed to save. Check permissions.' })
+    } else {
+      setAiCharMsg({ ok: true, text: 'AI Character updated!' })
+      setAiCharAvatarUrl(newAvatarUrl)
+      setAiCharName(trimmedName)
+      setAiCharNewFile(null)
+      setAiCharPreview(null)
+    }
+    setAiCharLoading(false)
   }
 
   // ── Banner file pick ──
@@ -1108,6 +1205,86 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                   </div>
                 )}
               </div>
+
+              {/* ── AI Character ── */}
+              <div className="border-t border-[#3f4147] pt-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Bot className="w-5 h-5 text-[#5865f2]" />
+                  <p className="text-base font-bold text-[#dbdee1]">AI Character</p>
+                </div>
+
+                {!hasAiAccess ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-[#949ba4]">
+                      Enter a character code to unlock the AI chatbot.
+                    </p>
+                    <div className="flex gap-2">
+                      <input type="text" value={aiCodeInput}
+                        onChange={e => { setAiCodeInput(e.target.value); setAiCodeMsg(null) }}
+                        onKeyDown={e => e.key === 'Enter' && redeemAiCode()}
+                        placeholder="Enter code…"
+                        className="flex-1 bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm font-mono" />
+                      <button onClick={redeemAiCode} disabled={!aiCodeInput.trim() || aiCodeLoading}
+                        className="px-4 py-2 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm flex items-center gap-1.5">
+                        {aiCodeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+                        Redeem
+                      </button>
+                    </div>
+                    {aiCodeMsg && (
+                      <p className={`text-sm ${aiCodeMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{aiCodeMsg.text}</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#23a55a] font-medium">✓ AI Character is active on your account.</p>
+                )}
+              </div>
+
+              {/* ── Edit AI Character (mako#0000 only) ── */}
+              {profile.username === 'mako' && profile.tag === '0000' && (
+                <div className="border-t border-[#3f4147] pt-6">
+                  <p className="text-base font-bold text-[#dbdee1] mb-4">Edit AI Character</p>
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">Avatar</p>
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center shrink-0">
+                          {(aiCharPreview || aiCharAvatarUrl)
+                            ? <img src={aiCharPreview ?? aiCharAvatarUrl!} alt="" className="w-full h-full object-cover" />
+                            : <Bot className="w-6 h-6 text-[#949ba4]" />}
+                        </div>
+                        <button onClick={() => aiCharFileRef.current?.click()}
+                          className="px-3 py-1.5 bg-[#383a40] hover:bg-[#404249] text-[#dbdee1] text-sm rounded-md transition-colors flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5" />
+                          Change
+                        </button>
+                        <input ref={aiCharFileRef} type="file" accept="image/*" className="hidden"
+                          onChange={e => {
+                            const f = e.target.files?.[0]
+                            if (!f) return
+                            setAiCharNewFile(f)
+                            setAiCharPreview(URL.createObjectURL(f))
+                          }} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">Display Name</p>
+                      <input type="text" value={aiCharName}
+                        onChange={e => setAiCharName(e.target.value)}
+                        maxLength={32}
+                        placeholder="Mako AI"
+                        className="w-full bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm" />
+                    </div>
+                    {aiCharMsg && (
+                      <p className={`text-sm ${aiCharMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{aiCharMsg.text}</p>
+                    )}
+                    <button onClick={saveAiCharacter} disabled={aiCharLoading}
+                      className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm flex items-center gap-2">
+                      {aiCharLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                      Save AI Character
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
