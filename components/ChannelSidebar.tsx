@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { Hash, Plus, Copy, Check, UserPlus, X, Users, Bot } from 'lucide-react'
+import { DmShootingStarsOverlay, DmSnowOverlay } from './DmHoverAnimations'
 import { clsx } from 'clsx'
 import { createClient } from '@/lib/supabase/client'
 import type { Channel, Profile, Server } from '@/lib/types'
@@ -47,6 +48,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [cropFile, setCropFile] = useState<{ file: File; groupId: string } | null>(null)
   const groupIconInputRef = useRef<HTMLInputElement>(null)
   const [aiCharacter, setAiCharacter] = useState<{ name: string; avatar_url: string | null } | null>(null)
+  const [hoveredDmId, setHoveredDmId] = useState<string | null>(null)
   const [hasAiAccess, setHasAiAccess] = useState(profile.has_ai_access ?? false)
   const [hideAi, setHideAi] = useState(profile.hide_ai ?? false)
 
@@ -412,30 +414,41 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                 onContextMenu={e => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, userId: dm.otherUser?.id }) }}>
                 <button
                   onClick={() => router.push(`/dm/${dm.id}`)}
+                  onMouseEnter={() => setHoveredDmId(dm.id)}
+                  onMouseLeave={() => setHoveredDmId(null)}
                   className={clsx(
-                    'w-full flex items-center gap-2 px-2 py-2 rounded transition-colors pr-8',
+                    'relative overflow-hidden w-full flex items-center gap-2 px-2 py-2 rounded transition-colors pr-8',
                     dmId === dm.id
                       ? 'bg-[#404249] text-[#dbdee1]'
                       : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                   )}
                 >
-                  <div className="relative w-8 h-8 shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none">
-                      {dm.otherUser?.avatar_url
-                        ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
-                        : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
+                  {hoveredDmId === dm.id && dm.otherUser?.is_premium && dm.otherUser.profile_bg_animation && (
+                    <div className="absolute inset-0 rounded pointer-events-none">
+                      {dm.otherUser.profile_bg_animation === 'snow'
+                        ? <DmSnowOverlay />
+                        : <DmShootingStarsOverlay />}
                     </div>
-                    {(unreadCounts[dm.id] ?? 0) > 0 && (
-                      <span className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
-                        {unreadCounts[dm.id] > 99 ? '99+' : unreadCounts[dm.id]}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium truncate">{(dm.otherUser?.id && nicknames.get(dm.otherUser.id)) ?? displayName(dm.otherUser)}</p>
-                    {dm.lastMsg && (
-                      <p className="text-xs text-[#6d6f78] truncate">{dm.lastMsg}</p>
-                    )}
+                  )}
+                  <div className="relative z-10 flex items-center gap-2 w-full min-w-0">
+                    <div className="relative w-8 h-8 shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none">
+                        {dm.otherUser?.avatar_url
+                          ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                          : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
+                      </div>
+                      {(unreadCounts[dm.id] ?? 0) > 0 && (
+                        <span className="absolute -bottom-0.5 -right-0.5 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
+                          {unreadCounts[dm.id] > 99 ? '99+' : unreadCounts[dm.id]}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-medium truncate">{(dm.otherUser?.id && nicknames.get(dm.otherUser.id)) ?? displayName(dm.otherUser)}</p>
+                      {dm.lastMsg && (
+                        <p className="text-xs text-[#6d6f78] truncate">{dm.lastMsg}</p>
+                      )}
+                    </div>
                   </div>
                 </button>
                 <button
