@@ -353,15 +353,15 @@ export function DmSolarOverlay() {
       t += 0.016
       ctx.clearRect(0, 0, W, H)
 
-      // Dark amber overlay
-      ctx.fillStyle = 'rgba(10,7,1,0.74)'
+      // Dark cold overlay
+      ctx.fillStyle = 'rgba(2,4,10,0.74)'
       ctx.fillRect(0, 0, W, H)
 
       // Stars
       for (const s of stars) {
         ctx.beginPath()
         ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2)
-        ctx.fillStyle = s.warm ? `rgba(255,210,120,${s.a})` : `rgba(255,235,190,${s.a})`
+        ctx.fillStyle = s.warm ? `rgba(180,210,255,${s.a})` : `rgba(240,245,255,${s.a})`
         ctx.fill()
       }
 
@@ -371,14 +371,16 @@ export function DmSolarOverlay() {
       if (moonImg.complete && moonImg.naturalWidth > 0)
         ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
 
-      // Saturn — lower-left
+      // Saturn — lower-left, natural aspect ratio
       const sh = Math.min(W, H) * 0.16
-      const sw = sh * 1.5
+      const sw = saturnImg.complete && saturnImg.naturalWidth > 0
+        ? sh * (saturnImg.naturalWidth / saturnImg.naturalHeight)
+        : sh
       const sx = W * 0.18; const sy = H * 0.78
       if (saturnImg.complete && saturnImg.naturalWidth > 0)
         ctx.drawImage(saturnImg, sx - sw / 2, sy - sh / 2, sw, sh)
 
-      // Solar wind motes
+      // Solar wind motes — cold white/silver
       for (const m of motes) {
         m.x += m.vx / 100
         m.y += (m.vy + Math.sin(t * 0.6 + m.phase) * 0.015) / 100
@@ -389,12 +391,12 @@ export function DmSolarOverlay() {
         const px = m.x * W; const py = m.y * H
         const pa = m.a * (0.6 + Math.sin(t * 1.2 + m.phase) * 0.4)
         const g = ctx.createRadialGradient(px, py, 0, px, py, m.r * 3)
-        g.addColorStop(0, `rgba(255,200,80,${pa * 0.9})`)
-        g.addColorStop(0.5, `rgba(255,140,30,${pa * 0.35})`)
-        g.addColorStop(1, 'rgba(200,80,0,0)')
+        g.addColorStop(0, `rgba(200,220,255,${pa * 0.9})`)
+        g.addColorStop(0.5, `rgba(150,185,255,${pa * 0.35})`)
+        g.addColorStop(1, 'rgba(80,120,220,0)')
         ctx.beginPath(); ctx.arc(px, py, m.r * 3, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill()
         ctx.beginPath(); ctx.arc(px, py, m.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,225,140,${pa})`; ctx.fill()
+        ctx.fillStyle = `rgba(230,240,255,${pa})`; ctx.fill()
       }
     }
 

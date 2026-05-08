@@ -425,16 +425,16 @@ export function SolarAnimation({ opacity = 1 }: { opacity?: number }) {
       t += 0.016
       ctx.clearRect(0, 0, W, H)
 
-      // Deep space with warm amber haze
+      // Deep cold space
       const sky = ctx.createLinearGradient(0, 0, 0, H)
-      sky.addColorStop(0, '#080501')
-      sky.addColorStop(0.4, '#100a02')
-      sky.addColorStop(1, '#1a1005')
+      sky.addColorStop(0, '#020408')
+      sky.addColorStop(0.5, '#04080f')
+      sky.addColorStop(1, '#060c18')
       ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H)
 
-      // Warm glow behind moon (top-right)
-      const haze = ctx.createRadialGradient(W * 0.82, H * 0.18, 0, W * 0.82, H * 0.18, W * 0.3)
-      haze.addColorStop(0, 'rgba(255,180,60,0.08)')
+      // Cold white haze behind moon
+      const haze = ctx.createRadialGradient(W * 0.82, H * 0.18, 0, W * 0.82, H * 0.18, W * 0.28)
+      haze.addColorStop(0, 'rgba(210,230,255,0.07)')
       haze.addColorStop(1, 'rgba(0,0,0,0)')
       ctx.fillStyle = haze; ctx.fillRect(0, 0, W, H)
 
@@ -442,24 +442,26 @@ export function SolarAnimation({ opacity = 1 }: { opacity?: number }) {
       for (const s of stars) {
         ctx.beginPath()
         ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2)
-        ctx.fillStyle = s.warm ? `rgba(255,210,120,${s.a})` : `rgba(255,240,200,${s.a})`
+        ctx.fillStyle = s.warm ? `rgba(180,210,255,${s.a})` : `rgba(240,245,255,${s.a})`
         ctx.fill()
       }
 
-      // Solar moon — top-right, drawn as-is (pixel art, no clip)
+      // Solar moon — top-right
       const mr = Math.min(W, H) * 0.13
       const mx = W * 0.80; const my = H * 0.20
       if (moonImg.complete && moonImg.naturalWidth > 0)
         ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
 
-      // Saturn — lower-left, wider to preserve aspect ratio
+      // Saturn — lower-left, natural aspect ratio
       const sh = Math.min(W, H) * 0.18
-      const sw = sh * 1.5
+      const sw = saturnImg.complete && saturnImg.naturalWidth > 0
+        ? sh * (saturnImg.naturalWidth / saturnImg.naturalHeight)
+        : sh
       const sx = W * 0.14; const sy = H * 0.76
       if (saturnImg.complete && saturnImg.naturalWidth > 0)
         ctx.drawImage(saturnImg, sx - sw / 2, sy - sh / 2, sw, sh)
 
-      // Solar wind motes
+      // Solar wind motes — cold white/silver
       for (const m of motes) {
         m.x += m.vx / 100
         m.y += (m.vy + Math.sin(t * 0.6 + m.phase) * 0.015) / 100
@@ -470,12 +472,12 @@ export function SolarAnimation({ opacity = 1 }: { opacity?: number }) {
         const px = m.x * W; const py = m.y * H
         const pa = m.a * (0.6 + Math.sin(t * 1.2 + m.phase) * 0.4)
         const g = ctx.createRadialGradient(px, py, 0, px, py, m.r * 3)
-        g.addColorStop(0, `rgba(255,200,80,${pa * 0.9})`)
-        g.addColorStop(0.5, `rgba(255,140,30,${pa * 0.35})`)
-        g.addColorStop(1, 'rgba(200,80,0,0)')
+        g.addColorStop(0, `rgba(200,220,255,${pa * 0.9})`)
+        g.addColorStop(0.5, `rgba(150,185,255,${pa * 0.35})`)
+        g.addColorStop(1, 'rgba(80,120,220,0)')
         ctx.beginPath(); ctx.arc(px, py, m.r * 3, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill()
         ctx.beginPath(); ctx.arc(px, py, m.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255,230,150,${pa})`; ctx.fill()
+        ctx.fillStyle = `rgba(230,240,255,${pa})`; ctx.fill()
       }
     }
 
