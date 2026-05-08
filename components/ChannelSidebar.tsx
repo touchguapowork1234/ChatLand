@@ -425,7 +425,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                 >
                   {dm.otherUser?.is_premium && dm.otherUser.sidebar_animation && (
                     <div
-                      className="absolute inset-0 rounded pointer-events-none transition-opacity duration-500"
+                      className="absolute inset-0 rounded pointer-events-none transition-opacity duration-150"
                       style={{ opacity: (hoveredDmId === dm.id || dmId === dm.id) ? 1 : 0 }}
                     >
                       {dm.otherUser.sidebar_animation === 'snow'
