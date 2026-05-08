@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams, usePathname, useRouter } from 'next/navigation'
 import { Hash, Plus, Copy, Check, UserPlus, X, Users, Bot } from 'lucide-react'
-import { DmShootingStarsOverlay, DmSnowOverlay } from './DmHoverAnimations'
+import { DmShootingStarsOverlay, DmSnowOverlay, DmBloodmoonOverlay } from './DmHoverAnimations'
 import { clsx } from 'clsx'
 import { createClient } from '@/lib/supabase/client'
 import type { Channel, Profile, Server } from '@/lib/types'
@@ -430,7 +430,9 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     >
                       {dm.otherUser.sidebar_animation === 'snow'
                         ? <DmSnowOverlay />
-                        : <DmShootingStarsOverlay />}
+                        : dm.otherUser.sidebar_animation === 'bloodmoon'
+                          ? <DmBloodmoonOverlay />
+                          : <DmShootingStarsOverlay />}
                     </div>
                   )}
                   <div className="relative z-10 flex items-center gap-2 w-full min-w-0">

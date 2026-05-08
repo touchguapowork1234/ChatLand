@@ -1142,6 +1142,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                 {([
                                   { id: 'shooting_stars', label: 'Shooting Stars', desc: 'Star field with a glowing moon and shooting streaks' },
                                   { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
+                                  { id: 'bloodmoon',      label: 'Bloodmoon',      desc: 'Crimson night sky with a blood-red moon and rising embers' },
                                 ] as { id: string; label: string; desc: string }[]).map(opt => (
                                   <button
                                     key={opt.id}
@@ -1207,6 +1208,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                 {([
                                   { id: 'shooting_stars', label: 'Shooting Stars', desc: 'Star field with a glowing moon and shooting streaks' },
                                   { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
+                                  { id: 'bloodmoon',      label: 'Bloodmoon',      desc: 'Crimson night sky with a blood-red moon and rising embers' },
                                 ] as { id: string; label: string; desc: string }[]).map(opt => (
                                   <button
                                     key={opt.id}

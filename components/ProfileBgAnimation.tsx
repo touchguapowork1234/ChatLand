@@ -165,6 +165,123 @@ export function ShootingStarsAnimation({ opacity = 1 }: { opacity?: number }) {
   )
 }
 
+// ── Blood Moon ────────────────────────────────────────────────────────────────
+
+interface Ember { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number }
+
+export function BloodmoonAnimation({ opacity = 1 }: { opacity?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let raf = 0
+
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    const stars = Array.from({ length: 130 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.1 + 0.2,
+      a: Math.random() * 0.35 + 0.1,
+      tinted: Math.random() > 0.55,
+    }))
+
+    const embers: Ember[] = Array.from({ length: 55 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: 0.5 + Math.random() * 1.6,
+      speed: 0.07 + Math.random() * 0.16,
+      drift: (Math.random() - 0.5) * 0.5,
+      phase: Math.random() * Math.PI * 2,
+      a: 0.4 + Math.random() * 0.55,
+    }))
+
+    let t = 0
+    const draw = () => {
+      raf = requestAnimationFrame(draw)
+      const W = canvas.width; const H = canvas.height
+      t += 0.016
+      ctx.clearRect(0, 0, W, H)
+
+      // Deep crimson sky
+      const sky = ctx.createLinearGradient(0, 0, 0, H)
+      sky.addColorStop(0, '#050000')
+      sky.addColorStop(0.5, '#110003')
+      sky.addColorStop(1, '#1c0007')
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H)
+
+      // Stars
+      for (const s of stars) {
+        ctx.beginPath()
+        ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2)
+        ctx.fillStyle = s.tinted ? `rgba(255,110,70,${s.a})` : `rgba(255,190,170,${s.a})`
+        ctx.fill()
+      }
+
+      // Blood moon
+      const mx = W * 0.80; const my = H * 0.20; const mr = Math.min(W, H) * 0.13
+
+      // Corona layers
+      for (let i = 6; i >= 1; i--) {
+        const g = ctx.createRadialGradient(mx, my, mr, mx, my, mr + i * 20)
+        g.addColorStop(0, `rgba(200,15,0,${0.055 / i})`)
+        g.addColorStop(0.5, `rgba(140,0,0,${0.025 / i})`)
+        g.addColorStop(1, 'rgba(100,0,0,0)')
+        ctx.beginPath(); ctx.arc(mx, my, mr + i * 20, 0, Math.PI * 2)
+        ctx.fillStyle = g; ctx.fill()
+      }
+
+      // Moon disc
+      const mg = ctx.createRadialGradient(mx - mr * 0.28, my - mr * 0.28, mr * 0.08, mx, my, mr)
+      mg.addColorStop(0, '#ff4a00')
+      mg.addColorStop(0.35, '#cc1200')
+      mg.addColorStop(0.75, '#8b0000')
+      mg.addColorStop(1, '#540000')
+      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
+
+      // Surface shadow patches
+      ctx.fillStyle = 'rgba(30,0,0,0.28)'
+      ctx.beginPath(); ctx.arc(mx + mr * 0.32, my + mr * 0.22, mr * 0.22, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(mx - mr * 0.38, my + mr * 0.38, mr * 0.16, 0, Math.PI * 2); ctx.fill()
+      ctx.beginPath(); ctx.arc(mx + mr * 0.08, my - mr * 0.32, mr * 0.13, 0, Math.PI * 2); ctx.fill()
+
+      // Rim glow
+      const rim = ctx.createRadialGradient(mx, my, mr * 0.65, mx, my, mr)
+      rim.addColorStop(0, 'rgba(255,50,0,0)')
+      rim.addColorStop(1, 'rgba(255,70,10,0.22)')
+      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = rim; ctx.fill()
+
+      // Rising embers
+      for (const e of embers) {
+        e.y -= e.speed / 100
+        e.x += (e.drift + Math.sin(t * 1.4 + e.phase) * 0.14) / 100
+        if (e.y < -0.02) { e.y = 1.02; e.x = Math.random() }
+        if (e.x > 1.05) e.x = -0.05
+        if (e.x < -0.05) e.x = 1.05
+
+        const px = e.x * W; const py = e.y * H
+        const g = ctx.createRadialGradient(px, py, 0, px, py, e.r * 3.2)
+        g.addColorStop(0, `rgba(255,90,0,${e.a * 0.85})`)
+        g.addColorStop(0.5, `rgba(200,20,0,${e.a * 0.35})`)
+        g.addColorStop(1, 'rgba(140,0,0,0)')
+        ctx.beginPath(); ctx.arc(px, py, e.r * 3.2, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill()
+        ctx.beginPath(); ctx.arc(px, py, e.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,150,40,${e.a})`; ctx.fill()
+      }
+    }
+
+    draw()
+    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+  }, [])
+
+  return (
+    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: 'inherit', opacity }} />
+  )
+}
+
 // ── Snow ──────────────────────────────────────────────────────────────────────
 
 interface Flake { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number }
