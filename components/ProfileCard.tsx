@@ -161,15 +161,15 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
                 className="absolute inset-0 w-full h-full object-cover"
               />
             )}
-            {/* Profile attachment — sits on top of banner */}
+            {/* Profile attachment — sits on the banner's bottom edge */}
             {profile?.is_premium && profile.profile_attachment && (() => {
               const att = ATTACHMENTS.find(a => a.id === profile.profile_attachment)
               return att ? (
                 <img
                   src={att.src}
                   alt={att.label}
-                  className="absolute bottom-0 right-10 z-10 pointer-events-none select-none"
-                  style={{ height: 96 }}
+                  className="absolute pointer-events-none select-none"
+                  style={{ bottom: 0, right: 40, height: 96, transform: 'translateY(35%)', zIndex: 20 }}
                 />
               ) : null
             })()}
