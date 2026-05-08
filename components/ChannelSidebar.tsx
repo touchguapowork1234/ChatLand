@@ -47,6 +47,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
   const [cropFile, setCropFile] = useState<{ file: File; groupId: string } | null>(null)
   const groupIconInputRef = useRef<HTMLInputElement>(null)
   const [aiCharacter, setAiCharacter] = useState<{ name: string; avatar_url: string | null } | null>(null)
+  const [hasAiAccess, setHasAiAccess] = useState(profile.has_ai_access ?? false)
 
   // Load blocked user IDs + friend IDs + nicknames
   useEffect(() => {
@@ -69,6 +70,22 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
       supabase.from('ai_character').select('name, avatar_url').eq('id', 1).single()
         .then(({ data }) => { if (data) setAiCharacter(data as { name: string; avatar_url: string | null }) })
     }
+  }, [profile.id, serverId])
+
+  // Poll every 5s for AI access + character updates
+  useEffect(() => {
+    if (serverId) return
+    const poll = async () => {
+      const { data: prof } = await supabase
+        .from('profiles').select('has_ai_access').eq('id', profile.id).single()
+      if (!prof?.has_ai_access) return
+      setHasAiAccess(true)
+      const { data: char } = await supabase
+        .from('ai_character').select('name, avatar_url').eq('id', 1).single()
+      if (char) setAiCharacter(char as { name: string; avatar_url: string | null })
+    }
+    const interval = setInterval(poll, 5000)
+    return () => clearInterval(interval)
   }, [profile.id, serverId])
 
   const blockDMUser = async (userId: string) => {
@@ -357,7 +374,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
 
           <div className="flex-1 overflow-y-auto px-2 py-2">
             {/* AI Chatbot */}
-            {profile.has_ai_access && aiCharacter && (
+            {hasAiAccess && aiCharacter && (
               <>
                 <div className="px-2 pt-2 pb-1">
                   <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide">AI</p>
