@@ -365,14 +365,16 @@ export function DmSolarOverlay() {
         ctx.fill()
       }
 
-      // Moon — top-right
-      const mr = Math.min(W, H) * 0.14
+      // Moon — top-right, gentle pulse
+      const moonPulse = 1 + Math.sin(t * 0.7) * 0.04
+      const mr = Math.min(W, H) * 0.14 * moonPulse
       const mx = W * 0.84; const my = H * 0.28
       if (moonImg.complete && moonImg.naturalWidth > 0)
         ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
 
-      // Saturn — lower-left, natural aspect ratio
-      const sh = Math.min(W, H) * 0.16
+      // Saturn — lower-left, natural aspect ratio, offset pulse
+      const saturnPulse = 1 + Math.sin(t * 0.5 + 1.4) * 0.04
+      const sh = Math.min(W, H) * 0.16 * saturnPulse
       const sw = saturnImg.complete && saturnImg.naturalWidth > 0
         ? sh * (saturnImg.naturalWidth / saturnImg.naturalHeight)
         : sh
