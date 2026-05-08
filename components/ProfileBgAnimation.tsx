@@ -269,6 +269,118 @@ export function BloodmoonAnimation({ opacity = 1 }: { opacity?: number }) {
   )
 }
 
+// ── Blue Moon ─────────────────────────────────────────────────────────────────
+
+interface Wisp { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number; pulse: number }
+
+export function BluemoonAnimation({ opacity = 1 }: { opacity?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let raf = 0
+
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    const stars = Array.from({ length: 140 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.1 + 0.2,
+      a: Math.random() * 0.5 + 0.15,
+      tinted: Math.random() > 0.5,
+    }))
+
+    const wisps: Wisp[] = Array.from({ length: 50 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: 0.8 + Math.random() * 2.2,
+      speed: 0.05 + Math.random() * 0.12,
+      drift: (Math.random() - 0.5) * 0.4,
+      phase: Math.random() * Math.PI * 2,
+      a: 0.3 + Math.random() * 0.5,
+      pulse: Math.random() * Math.PI * 2,
+    }))
+
+    let t = 0
+    const moonImg = new Image()
+    moonImg.src = '/bluemoon_moon.png'
+
+    const draw = () => {
+      raf = requestAnimationFrame(draw)
+      const W = canvas.width; const H = canvas.height
+      t += 0.016
+      ctx.clearRect(0, 0, W, H)
+
+      // Deep midnight blue sky
+      const sky = ctx.createLinearGradient(0, 0, 0, H)
+      sky.addColorStop(0, '#020510')
+      sky.addColorStop(0.5, '#050d1e')
+      sky.addColorStop(1, '#071528')
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H)
+
+      // Subtle blue aurora shimmer at top
+      const aurora = ctx.createLinearGradient(0, 0, W, H * 0.4)
+      aurora.addColorStop(0, 'rgba(30,80,180,0.06)')
+      aurora.addColorStop(0.5, 'rgba(60,120,255,0.03)')
+      aurora.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = aurora; ctx.fillRect(0, 0, W, H * 0.4)
+
+      // Stars
+      for (const s of stars) {
+        ctx.beginPath()
+        ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2)
+        ctx.fillStyle = s.tinted ? `rgba(140,180,255,${s.a})` : `rgba(200,220,255,${s.a})`
+        ctx.fill()
+      }
+
+      // Blue moon
+      const mr = Math.min(W, H) * 0.13
+      const mx = W * 0.80; const my = H * 0.20
+
+      if (moonImg.complete && moonImg.naturalWidth > 0) {
+        ctx.save()
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.clip()
+        ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
+        ctx.restore()
+      } else {
+        const mg = ctx.createRadialGradient(mx - mr * 0.28, my - mr * 0.28, mr * 0.08, mx, my, mr)
+        mg.addColorStop(0, '#a0c8ff'); mg.addColorStop(0.6, '#4080e0'); mg.addColorStop(1, '#1030a0')
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
+      }
+
+      // Floating blue wisps / luminescent orbs
+      for (const w of wisps) {
+        w.y -= w.speed / 100
+        w.x += (w.drift + Math.sin(t * 0.8 + w.phase) * 0.18) / 100
+        w.pulse += 0.03
+        if (w.y < -0.02) { w.y = 1.02; w.x = Math.random() }
+        if (w.x > 1.05) w.x = -0.05
+        if (w.x < -0.05) w.x = 1.05
+
+        const px = w.x * W; const py = w.y * H
+        const pa = w.a * (0.7 + Math.sin(w.pulse) * 0.3)
+        const g = ctx.createRadialGradient(px, py, 0, px, py, w.r * 3.5)
+        g.addColorStop(0, `rgba(100,160,255,${pa * 0.9})`)
+        g.addColorStop(0.4, `rgba(60,100,220,${pa * 0.4})`)
+        g.addColorStop(1, 'rgba(20,40,180,0)')
+        ctx.beginPath(); ctx.arc(px, py, w.r * 3.5, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill()
+        ctx.beginPath(); ctx.arc(px, py, w.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(200,225,255,${pa})`; ctx.fill()
+      }
+    }
+
+    draw()
+    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+  }, [])
+
+  return (
+    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: 'inherit', opacity }} />
+  )
+}
+
 // ── Snow ──────────────────────────────────────────────────────────────────────
 
 interface Flake { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number }

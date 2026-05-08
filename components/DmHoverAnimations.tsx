@@ -207,6 +207,108 @@ export function DmBloodmoonOverlay() {
   )
 }
 
+// ── Blue Moon (compact, for DM sidebar entries) ───────────────────────────────
+
+interface BlueWisp { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number; pulse: number }
+
+export function DmBluemoonOverlay() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let raf = 0
+
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    const stars = Array.from({ length: 45 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 0.9 + 0.2,
+      a: Math.random() * 0.4 + 0.1,
+      tinted: Math.random() > 0.5,
+    }))
+
+    const wisps: BlueWisp[] = Array.from({ length: 25 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: 0.5 + Math.random() * 1.4,
+      speed: 0.06 + Math.random() * 0.14,
+      drift: (Math.random() - 0.5) * 0.4,
+      phase: Math.random() * Math.PI * 2,
+      a: 0.35 + Math.random() * 0.45,
+      pulse: Math.random() * Math.PI * 2,
+    }))
+
+    const moonImg = new Image()
+    moonImg.src = '/bluemoon_moon.png'
+
+    let t = 0
+    const draw = () => {
+      raf = requestAnimationFrame(draw)
+      const W = canvas.width; const H = canvas.height
+      t += 0.016
+      ctx.clearRect(0, 0, W, H)
+
+      // Deep blue overlay
+      ctx.fillStyle = 'rgba(2,5,18,0.74)'
+      ctx.fillRect(0, 0, W, H)
+
+      // Stars
+      for (const s of stars) {
+        ctx.beginPath()
+        ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2)
+        ctx.fillStyle = s.tinted ? `rgba(130,170,255,${s.a})` : `rgba(200,215,255,${s.a})`
+        ctx.fill()
+      }
+
+      // Blue moon
+      const mr = Math.min(W, H) * 0.14
+      const mx = W * 0.84; const my = H * 0.28
+
+      if (moonImg.complete && moonImg.naturalWidth > 0) {
+        ctx.save()
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.clip()
+        ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
+        ctx.restore()
+      } else {
+        const mg = ctx.createRadialGradient(mx - mr * 0.22, my - mr * 0.22, mr * 0.1, mx, my, mr)
+        mg.addColorStop(0, '#a0c8ff'); mg.addColorStop(0.6, '#3060d0'); mg.addColorStop(1, '#102080')
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
+      }
+
+      // Wisps
+      for (const w of wisps) {
+        w.y -= w.speed / 100
+        w.x += (w.drift + Math.sin(t * 0.8 + w.phase) * 0.18) / 100
+        w.pulse += 0.03
+        if (w.y < -0.02) { w.y = 1.02; w.x = Math.random() }
+        if (w.x > 1.05) w.x = -0.05
+        if (w.x < -0.05) w.x = 1.05
+
+        const px = w.x * W; const py = w.y * H
+        const pa = w.a * (0.7 + Math.sin(w.pulse) * 0.3)
+        const g = ctx.createRadialGradient(px, py, 0, px, py, w.r * 3.2)
+        g.addColorStop(0, `rgba(100,160,255,${pa * 0.85})`)
+        g.addColorStop(0.4, `rgba(50,90,210,${pa * 0.35})`)
+        g.addColorStop(1, 'rgba(20,40,180,0)')
+        ctx.beginPath(); ctx.arc(px, py, w.r * 3.2, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill()
+        ctx.beginPath(); ctx.arc(px, py, w.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(190,215,255,${pa})`; ctx.fill()
+      }
+    }
+
+    draw()
+    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+  }, [])
+
+  return (
+    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: 'inherit' }} />
+  )
+}
+
 // ── Snow (compact, for DM sidebar entries) ────────────────────────────────────
 
 interface Flake { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number }

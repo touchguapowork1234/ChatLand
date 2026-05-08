@@ -5,7 +5,7 @@ import { X, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { displayName, userTag } from '@/lib/types'
-import { ShootingStarsAnimation, SnowAnimation, BloodmoonAnimation } from './ProfileBgAnimation'
+import { ShootingStarsAnimation, SnowAnimation, BloodmoonAnimation, BluemoonAnimation } from './ProfileBgAnimation'
 import AvatarWithDecoration from './AvatarWithDecoration'
 import { useStatus, STATUS_META } from './StatusProvider'
 
@@ -109,6 +109,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
       {profile?.profile_bg_animation === 'shooting_stars' && <ShootingStarsAnimation opacity={profile.profile_bg_opacity ?? 1} />}
       {profile?.profile_bg_animation === 'snow' && <SnowAnimation opacity={profile.profile_bg_opacity ?? 1} />}
       {profile?.profile_bg_animation === 'bloodmoon' && <BloodmoonAnimation opacity={profile.profile_bg_opacity ?? 1} />}
+      {profile?.profile_bg_animation === 'bluemoon' && <BluemoonAnimation opacity={profile.profile_bg_opacity ?? 1} />}
       {/* Perspective wrapper — captures mouse for tilt */}
       <div
         ref={wrapperRef}
