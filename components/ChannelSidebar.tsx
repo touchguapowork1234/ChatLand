@@ -380,10 +380,10 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                   <p className="text-xs font-semibold uppercase text-[#949ba4] tracking-wide">AI</p>
                 </div>
                 <button
-                  onClick={() => router.push('/ai')}
+                  onClick={() => router.push('/ejafterlyfe-ai')}
                   className={clsx(
                     'w-full flex items-center gap-2 px-2 py-2 rounded transition-colors mb-1',
-                    pathname === '/ai'
+                    pathname === '/ejafterlyfe-ai'
                       ? 'bg-[#404249] text-[#dbdee1]'
                       : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                   )}
