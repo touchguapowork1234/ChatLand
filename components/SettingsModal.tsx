@@ -391,9 +391,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     if (isPremium)
       jobs.push(savePremiumSettings())
     if (hideAi !== (profile.hide_ai ?? false))
-      jobs.push(supabase.from('profiles').update({ hide_ai: hideAi }).eq('id', profile.id).then(() => {
+      jobs.push((async () => {
+        await supabase.from('profiles').update({ hide_ai: hideAi }).eq('id', profile.id)
         onUpdated({ ...profile, hide_ai: hideAi })
-      }))
+      })())
     await Promise.all(jobs)
     setSaveAllLoading(false)
     setIsDirty(false)
