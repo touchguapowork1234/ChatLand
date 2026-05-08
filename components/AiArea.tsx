@@ -42,9 +42,10 @@ export default function AiArea({ profile }: { profile: Profile }) {
       const data = await res.json()
       setMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.message ?? 'Sorry, something went wrong.',
+        content: data.message ?? data.error ?? 'Sorry, something went wrong.',
       }])
-    } catch {
+    } catch (err) {
+      console.error('[AiArea]', err)
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, something went wrong.' }])
     }
 

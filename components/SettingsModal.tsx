@@ -382,14 +382,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       const w = img.width * scale, h = img.height * scale
       ctx.drawImage(img, (256 - w) / 2, (256 - h) / 2, w, h)
       URL.revokeObjectURL(src)
-      const blob = await new Promise<Blob>(r => canvas.toBlob(b => r(b!), 'image/jpeg', 0.9))
-      const { error: uploadErr } = await supabase.storage
-        .from('avatars')
-        .upload('ai_character.jpg', blob, { upsert: true, contentType: 'image/jpeg' })
-      if (!uploadErr) {
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl('ai_character.jpg')
-        newAvatarUrl = `${publicUrl}?t=${Date.now()}`
-      }
+      newAvatarUrl = canvas.toDataURL('image/jpeg', 0.85)
     }
 
     const trimmedName = aiCharName.trim() || 'Mako AI'

@@ -30,17 +30,22 @@ export async function POST(req: NextRequest) {
 
   const charName = aiChar?.name ?? 'AI Assistant'
 
-  const response = await anthropic.messages.create({
-    model: 'claude-haiku-4-5-20251001',
-    max_tokens: 1024,
-    system: `You are ${charName}, a helpful and friendly AI assistant inside a chat app. Be concise and conversational.`,
-    messages,
-  })
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1024,
+      system: `You are ${charName}, a helpful and friendly AI assistant inside a chat app. Be concise and conversational.`,
+      messages,
+    })
 
-  const content = response.content[0]
-  if (content.type !== 'text') {
-    return NextResponse.json({ error: 'Unexpected response type.' }, { status: 500 })
+    const content = response.content[0]
+    if (content.type !== 'text') {
+      return NextResponse.json({ error: 'Unexpected response type.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ message: content.text })
+  } catch (err) {
+    console.error('[bot/chat]', err)
+    return NextResponse.json({ error: 'AI request failed.' }, { status: 500 })
   }
-
-  return NextResponse.json({ message: content.text })
 }
