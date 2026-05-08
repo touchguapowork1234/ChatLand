@@ -128,7 +128,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
               src={att.src}
               alt={att.label}
               className="absolute pointer-events-none select-none z-30"
-              style={{ top: -16, right: 36, height: 88 }}
+              style={{ top: -26, right: 36, height: 88 }}
             />
           ) : null
         })()}
