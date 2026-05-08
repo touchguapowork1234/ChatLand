@@ -423,9 +423,9 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                       : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
                   )}
                 >
-                  {hoveredDmId === dm.id && dm.otherUser?.is_premium && dm.otherUser.profile_bg_animation && (
+                  {hoveredDmId === dm.id && dm.otherUser?.is_premium && dm.otherUser.sidebar_animation && (
                     <div className="absolute inset-0 rounded pointer-events-none">
-                      {dm.otherUser.profile_bg_animation === 'snow'
+                      {dm.otherUser.sidebar_animation === 'snow'
                         ? <DmSnowOverlay />
                         : <DmShootingStarsOverlay />}
                     </div>

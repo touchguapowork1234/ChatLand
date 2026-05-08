@@ -31,6 +31,7 @@ export type Profile = {
   profile_glow_opacity?: number | null
   has_ai_access?: boolean
   hide_ai?: boolean
+  sidebar_animation?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>

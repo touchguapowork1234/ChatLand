@@ -85,6 +85,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [glowEnabled, setGlowEnabled]     = useState(profile.profile_glow_enabled ?? false)
   const [glowColor, setGlowColor]         = useState(profile.profile_glow_color ?? '#5865f2')
   const [glowOpacity, setGlowOpacity]     = useState(profile.profile_glow_opacity ?? 0.8)
+  const [sidebarAnimEnabled, setSidebarAnimEnabled] = useState(!!(profile.sidebar_animation))
+  const [sidebarAnimType, setSidebarAnimType]       = useState<string>(profile.sidebar_animation ?? 'shooting_stars')
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -360,6 +362,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         profileTiltEnabled !== (profile.profile_tilt_enabled ?? false) ||
         bgAnimEnabled    !== !!(profile.profile_bg_animation) ||
         bgAnimOpacity    !== (profile.profile_bg_opacity ?? 1) ||
+        sidebarAnimEnabled !== !!(profile.sidebar_animation) ||
         decoration       !== (profile.profile_decoration ?? null) ||
         glowEnabled      !== (profile.profile_glow_enabled  ?? false) ||
         glowColor        !== (profile.profile_glow_color    ?? '#5865f2') ||
@@ -377,6 +380,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   }, [displayName, bio, alignerSrc, tag, hideAi, isPremium, bannerSrc, themeEnabled, cardEnabled,
       themePrimary, themeSecondary, cardPrimary, cardSecondary, profileTiltEnabled,
       bgAnimEnabled, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
+      sidebarAnimEnabled,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
       animMessageEntrance, animSmoothTransitions])
 
@@ -575,6 +579,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       profile_glow_enabled:  glowEnabled,
       profile_glow_color:    glowColor,
       profile_glow_opacity:  glowOpacity,
+      sidebar_animation:     sidebarAnimEnabled ? sidebarAnimType : null,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -1169,6 +1174,54 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                   onChange={e => setBgAnimOpacity(parseFloat(e.target.value))}
                                   className="w-full accent-[#f0b132]"
                                 />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="border-t border-[#2b2d31]" />
+
+                        {/* Sidebar Animations */}
+                        <div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm text-[#dbdee1] font-medium">Sidebar Animations</p>
+                              <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">
+                                Shows an animation when others hover your name in the DMs list
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setSidebarAnimEnabled(v => !v)}
+                              className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${sidebarAnimEnabled ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                            >
+                              <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${sidebarAnimEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+
+                          {sidebarAnimEnabled && (
+                            <div className="mt-3">
+                              <div className="grid grid-cols-2 gap-2">
+                                {([
+                                  { id: 'shooting_stars', label: 'Shooting Stars', desc: 'Star field with a glowing moon and shooting streaks' },
+                                  { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
+                                ] as { id: string; label: string; desc: string }[]).map(opt => (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => setSidebarAnimType(opt.id)}
+                                    className={`text-left p-3 rounded-lg border-2 transition-colors ${
+                                      sidebarAnimType === opt.id
+                                        ? 'border-[#f0b132] bg-[#f0b132]/10'
+                                        : 'border-[#3f4147] bg-[#232428] hover:border-[#5865f2]'
+                                    }`}
+                                  >
+                                    <p className={`text-sm font-semibold ${sidebarAnimType === opt.id ? 'text-[#f0b132]' : 'text-[#dbdee1]'}`}>
+                                      {opt.label}
+                                    </p>
+                                    <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">{opt.desc}</p>
+                                  </button>
+                                ))}
                               </div>
                             </div>
                           )}
