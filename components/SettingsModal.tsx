@@ -393,9 +393,12 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     if (hideAi !== (profile.hide_ai ?? false))
       jobs.push((async () => {
         await supabase.from('profiles').update({ hide_ai: hideAi }).eq('id', profile.id)
-        onUpdated({ ...profile, hide_ai: hideAi })
       })())
     await Promise.all(jobs)
+    // Fetch the definitive saved state and update parent once,
+    // avoiding stale-closure overwrites from concurrent onUpdated calls.
+    const { data: fresh } = await supabase.from('profiles').select('*').eq('id', profile.id).single()
+    if (fresh) onUpdated(fresh as Profile)
     setSaveAllLoading(false)
     setIsDirty(false)
   }
