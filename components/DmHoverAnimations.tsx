@@ -143,6 +143,9 @@ export function DmBloodmoonOverlay() {
       a: 0.4 + Math.random() * 0.5,
     }))
 
+    const moonImg = new Image()
+    moonImg.src = '/bloodmoon_moon.png'
+
     let t = 0
     const draw = () => {
       raf = requestAnimationFrame(draw)
@@ -163,7 +166,8 @@ export function DmBloodmoonOverlay() {
       }
 
       // Blood moon
-      const mx = W * 0.84; const my = H * 0.28; const mr = Math.min(W, H) * 0.14
+      const mr = Math.min(W, H) * 0.14
+      const mx = W * 0.84; const my = H * 0.28
 
       // Corona
       for (let i = 3; i >= 1; i--) {
@@ -174,19 +178,21 @@ export function DmBloodmoonOverlay() {
         ctx.fillStyle = g; ctx.fill()
       }
 
-      // Moon disc
-      const mg = ctx.createRadialGradient(mx - mr * 0.22, my - mr * 0.22, mr * 0.1, mx, my, mr)
-      mg.addColorStop(0, '#ff4400'); mg.addColorStop(0.4, '#c01000'); mg.addColorStop(0.85, '#7a0000'); mg.addColorStop(1, '#4a0000')
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
+      // Moon image (clipped to circle)
+      if (moonImg.complete && moonImg.naturalWidth > 0) {
+        ctx.save()
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.clip()
+        ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
+        ctx.restore()
+      } else {
+        const mg = ctx.createRadialGradient(mx - mr * 0.22, my - mr * 0.22, mr * 0.1, mx, my, mr)
+        mg.addColorStop(0, '#ff4400'); mg.addColorStop(0.85, '#7a0000'); mg.addColorStop(1, '#4a0000')
+        ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
+      }
 
-      // Surface patches
-      ctx.fillStyle = 'rgba(25,0,0,0.26)'
-      ctx.beginPath(); ctx.arc(mx + mr * 0.28, my + mr * 0.2, mr * 0.2, 0, Math.PI * 2); ctx.fill()
-      ctx.beginPath(); ctx.arc(mx - mr * 0.32, my + mr * 0.35, mr * 0.13, 0, Math.PI * 2); ctx.fill()
-
-      // Rim glow
+      // Rim glow over image
       const rim = ctx.createRadialGradient(mx, my, mr * 0.68, mx, my, mr)
-      rim.addColorStop(0, 'rgba(255,50,0,0)'); rim.addColorStop(1, 'rgba(255,60,0,0.2)')
+      rim.addColorStop(0, 'rgba(255,50,0,0)'); rim.addColorStop(1, 'rgba(255,60,0,0.18)')
       ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = rim; ctx.fill()
 
       // Embers
