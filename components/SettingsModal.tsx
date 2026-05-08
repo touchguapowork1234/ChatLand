@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { X, Upload, ZoomIn, ZoomOut, Sparkles, Loader2, Bot } from 'lucide-react'
+import { X, Upload, ZoomIn, ZoomOut, Sparkles, Loader2, Bot, Check } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/types'
 import { userTag } from '@/lib/types'
@@ -113,6 +113,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   // ── AI Character ──
   const [hasAiAccess, setHasAiAccess]   = useState(profile.has_ai_access ?? false)
   const [hideAi, setHideAi]             = useState(profile.hide_ai ?? false)
+  const [isDirty, setIsDirty]           = useState(false)
+  const [saveAllLoading, setSaveAllLoading] = useState(false)
   const [aiCodeInput, setAiCodeInput]   = useState('')
   const [aiCodeLoading, setAiCodeLoading] = useState(false)
   const [aiCodeMsg, setAiCodeMsg]       = useState<{ ok: boolean; text: string } | null>(null)
@@ -339,6 +341,59 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     setCodeLoading(false)
   }
 
+  // ── Dirty detection ──
+  useEffect(() => {
+    const dirty =
+      displayName !== (profile.display_name ?? '') ||
+      bio !== (profile.bio ?? '') ||
+      !!alignerSrc ||
+      tag !== profile.tag ||
+      (isPremium && (
+        !!bannerSrc ||
+        themeEnabled     !== (profile.theme_enabled      ?? true)  ||
+        cardEnabled      !== (profile.card_enabled       ?? true)  ||
+        themePrimary     !== (profile.theme_primary      ?? '#5865f2') ||
+        themeSecondary   !== (profile.theme_secondary    ?? '#7983f5') ||
+        cardPrimary      !== (profile.card_primary       ?? '#5865f2') ||
+        cardSecondary    !== (profile.card_secondary     ?? '#7983f5') ||
+        profileTiltEnabled !== (profile.profile_tilt_enabled ?? false) ||
+        bgAnimEnabled    !== !!(profile.profile_bg_animation) ||
+        bgAnimOpacity    !== (profile.profile_bg_opacity ?? 1) ||
+        decoration       !== (profile.profile_decoration ?? null) ||
+        glowEnabled      !== (profile.profile_glow_enabled  ?? false) ||
+        glowColor        !== (profile.profile_glow_color    ?? '#5865f2') ||
+        glowOpacity      !== (profile.profile_glow_opacity  ?? 0.8) ||
+        animEnabled          !== (profile.animations_enabled    ?? false) ||
+        animProfileFade      !== (profile.anim_profile_fade     ?? true)  ||
+        animChatFade         !== (profile.anim_chat_fade        ?? true)  ||
+        animGradient         !== (profile.anim_gradient         ?? true)  ||
+        animHoverGlow        !== (profile.anim_hover_glow       ?? false) ||
+        animMessageEntrance  !== (profile.anim_message_entrance ?? true)  ||
+        animSmoothTransitions!== (profile.anim_smooth_transitions ?? false)
+      ))
+    setIsDirty(dirty)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [displayName, bio, alignerSrc, tag, isPremium, bannerSrc, themeEnabled, cardEnabled,
+      themePrimary, themeSecondary, cardPrimary, cardSecondary, profileTiltEnabled,
+      bgAnimEnabled, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
+      animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
+      animMessageEntrance, animSmoothTransitions])
+
+  // ── Save all changed settings ──
+  const saveAll = async () => {
+    setSaveAllLoading(true)
+    const jobs: Promise<void>[] = []
+    if (displayName !== (profile.display_name ?? '') || bio !== (profile.bio ?? '') || !!alignerSrc)
+      jobs.push(saveProfile())
+    if (tag !== profile.tag && tag.length === 4)
+      jobs.push(saveTag())
+    if (isPremium)
+      jobs.push(savePremiumSettings())
+    await Promise.all(jobs)
+    setSaveAllLoading(false)
+    setIsDirty(false)
+  }
+
   // ── Toggle hide AI ──
   const toggleHideAi = async (val: boolean) => {
     setHideAi(val)
@@ -543,7 +598,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
       <div
-        className="bg-[#2b2d31] rounded-xl w-full max-w-2xl shadow-2xl flex overflow-hidden"
+        className="relative bg-[#2b2d31] rounded-xl w-full max-w-2xl shadow-2xl flex overflow-hidden"
         style={{ maxHeight: '85vh' }}
         onClick={e => e.stopPropagation()}
       >
@@ -1198,11 +1253,6 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                       <p className={`text-sm ${premiumMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{premiumMsg.text}</p>
                     )}
 
-                    <button onClick={savePremiumSettings} disabled={premiumLoading}
-                      className="px-6 py-2.5 bg-[#f0b132] hover:bg-[#d4982a] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-black font-semibold rounded-md transition-colors text-sm flex items-center gap-2">
-                      {premiumLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                      Save Premium Settings
-                    </button>
                   </div>
                 )}
               </div>
@@ -1303,6 +1353,18 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
               )}
             </div>
           )}
+        </div>
+
+        {/* ── Floating save button ── */}
+        <div className={`absolute bottom-6 right-6 transition-all duration-200 ${isDirty ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'}`}>
+          <button
+            onClick={saveAll}
+            disabled={saveAllLoading}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#23a55a] hover:bg-[#1e9650] disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-xl transition-colors text-sm"
+          >
+            {saveAllLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            Save Changes
+          </button>
         </div>
       </div>
     </div>
