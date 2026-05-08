@@ -181,11 +181,6 @@ export function DmBloodmoonOverlay() {
         ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
       }
 
-      // Rim glow over image
-      const rim = ctx.createRadialGradient(mx, my, mr * 0.68, mx, my, mr)
-      rim.addColorStop(0, 'rgba(255,50,0,0)'); rim.addColorStop(1, 'rgba(255,60,0,0.18)')
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = rim; ctx.fill()
-
       // Embers
       for (const e of embers) {
         e.y -= e.speed / 100
