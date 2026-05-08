@@ -198,12 +198,17 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-xl font-bold text-[#dbdee1] leading-tight">{displayName(profile)}</p>
                   {profile?.is_premium && (
-                    <img
-                      src="/ysu_premium.png"
-                      alt="Yasu Premium"
-                      title="Yasu Premium"
-                      className="h-5 w-auto shrink-0"
-                    />
+                    <div className="relative group/badge shrink-0">
+                      <img
+                        src="/ysu_premium.png"
+                        alt="Yasu Premium"
+                        className="h-5 w-auto"
+                      />
+                      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 bg-[#111214] text-[#dbdee1] text-xs font-semibold rounded shadow-lg whitespace-nowrap opacity-0 group-hover/badge:opacity-100 transition-opacity duration-150">
+                        Yasu Premium
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-[#111214]" />
+                      </div>
+                    </div>
                   )}
                 </div>
                 <p className="text-sm text-[#949ba4] mt-0.5">{userTag(profile)}</p>
