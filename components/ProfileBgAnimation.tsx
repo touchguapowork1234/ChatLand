@@ -228,16 +228,6 @@ export function BloodmoonAnimation({ opacity = 1 }: { opacity?: number }) {
       const mr = Math.min(W, H) * 0.13
       const mx = W * 0.80; const my = H * 0.20
 
-      // Corona layers
-      for (let i = 6; i >= 1; i--) {
-        const g = ctx.createRadialGradient(mx, my, mr, mx, my, mr + i * 20)
-        g.addColorStop(0, `rgba(200,15,0,${0.055 / i})`)
-        g.addColorStop(0.5, `rgba(140,0,0,${0.025 / i})`)
-        g.addColorStop(1, 'rgba(100,0,0,0)')
-        ctx.beginPath(); ctx.arc(mx, my, mr + i * 20, 0, Math.PI * 2)
-        ctx.fillStyle = g; ctx.fill()
-      }
-
       // Moon image (clipped to circle)
       if (moonImg.complete && moonImg.naturalWidth > 0) {
         ctx.save()

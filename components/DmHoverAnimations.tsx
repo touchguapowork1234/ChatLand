@@ -169,15 +169,6 @@ export function DmBloodmoonOverlay() {
       const mr = Math.min(W, H) * 0.14
       const mx = W * 0.84; const my = H * 0.28
 
-      // Corona
-      for (let i = 3; i >= 1; i--) {
-        const g = ctx.createRadialGradient(mx, my, mr, mx, my, mr + i * 9)
-        g.addColorStop(0, `rgba(190,10,0,${0.07 / i})`)
-        g.addColorStop(1, 'rgba(100,0,0,0)')
-        ctx.beginPath(); ctx.arc(mx, my, mr + i * 9, 0, Math.PI * 2)
-        ctx.fillStyle = g; ctx.fill()
-      }
-
       // Moon image (clipped to circle)
       if (moonImg.complete && moonImg.naturalWidth > 0) {
         ctx.save()
