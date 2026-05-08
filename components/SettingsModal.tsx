@@ -8,6 +8,7 @@ import { userTag } from '@/lib/types'
 import { useTheme } from './PremiumThemeProvider'
 import type { AnimConfig } from './PremiumThemeProvider'
 import { DECORATIONS } from '@/lib/decorations'
+import { ATTACHMENTS } from '@/lib/attachments'
 import AvatarWithDecoration from './AvatarWithDecoration'
 
 type Tab = 'profile' | 'account' | 'admin'
@@ -87,6 +88,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [glowOpacity, setGlowOpacity]     = useState(profile.profile_glow_opacity ?? 0.8)
   const [sidebarAnimEnabled, setSidebarAnimEnabled] = useState(!!(profile.sidebar_animation))
   const [sidebarAnimType, setSidebarAnimType]       = useState<string>(profile.sidebar_animation ?? 'shooting_stars')
+  const [profileAttachment, setProfileAttachment]   = useState<string | null>(profile.profile_attachment ?? null)
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -365,6 +367,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         bgAnimOpacity    !== (profile.profile_bg_opacity ?? 1) ||
         sidebarAnimEnabled !== !!(profile.sidebar_animation) ||
         (sidebarAnimEnabled && sidebarAnimType !== (profile.sidebar_animation ?? 'shooting_stars')) ||
+        profileAttachment  !== (profile.profile_attachment ?? null) ||
         decoration       !== (profile.profile_decoration ?? null) ||
         glowEnabled      !== (profile.profile_glow_enabled  ?? false) ||
         glowColor        !== (profile.profile_glow_color    ?? '#5865f2') ||
@@ -382,7 +385,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   }, [displayName, bio, alignerSrc, tag, hideAi, isPremium, bannerSrc, themeEnabled, cardEnabled,
       themePrimary, themeSecondary, cardPrimary, cardSecondary, profileTiltEnabled,
       bgAnimEnabled, bgAnimType, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
-      sidebarAnimEnabled, sidebarAnimType,
+      sidebarAnimEnabled, sidebarAnimType, profileAttachment,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
       animMessageEntrance, animSmoothTransitions])
 
@@ -582,6 +585,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       profile_glow_color:    glowColor,
       profile_glow_opacity:  glowOpacity,
       sidebar_animation:     sidebarAnimEnabled ? sidebarAnimType : null,
+      profile_attachment:    profileAttachment,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -1182,6 +1186,51 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                               </div>
                             </div>
                           )}
+                        </div>
+
+                        <div className="border-t border-[#2b2d31]" />
+
+                        {/* Profile Attachments */}
+                        <div>
+                          <div className="flex items-center justify-between gap-4 mb-3">
+                            <div className="min-w-0">
+                              <p className="text-sm text-[#dbdee1] font-medium">Profile Attachments</p>
+                              <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">
+                                Shows a small image or GIF on the top right of your profile card
+                              </p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setProfileAttachment(null)}
+                              className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                                profileAttachment === null
+                                  ? 'border-[#f0b132] bg-[#f0b132]/10'
+                                  : 'border-[#3f4147] bg-[#1e1f22] hover:border-[#5865f2]'
+                              }`}
+                            >
+                              <div className="w-12 h-12 rounded-lg bg-[#383a40] flex items-center justify-center">
+                                <span className="text-[#949ba4] text-lg font-bold">✕</span>
+                              </div>
+                              <p className={`text-xs font-medium ${profileAttachment === null ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>None</p>
+                            </button>
+                            {ATTACHMENTS.map(att => (
+                              <button
+                                key={att.id}
+                                type="button"
+                                onClick={() => setProfileAttachment(att.id)}
+                                className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-colors ${
+                                  profileAttachment === att.id
+                                    ? 'border-[#f0b132] bg-[#f0b132]/10'
+                                    : 'border-[#3f4147] bg-[#1e1f22] hover:border-[#5865f2]'
+                                }`}
+                              >
+                                <img src={att.src} alt={att.label} className="w-12 h-12 object-contain rounded" />
+                                <p className={`text-xs font-medium text-center leading-tight ${profileAttachment === att.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{att.label}</p>
+                              </button>
+                            ))}
+                          </div>
                         </div>
 
                         <div className="border-t border-[#2b2d31]" />

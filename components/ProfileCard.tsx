@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/types'
 import { displayName, userTag } from '@/lib/types'
 import { ShootingStarsAnimation, SnowAnimation, BloodmoonAnimation, BluemoonAnimation, SolarAnimation } from './ProfileBgAnimation'
 import AvatarWithDecoration from './AvatarWithDecoration'
+import { ATTACHMENTS } from '@/lib/attachments'
 import { useStatus, STATUS_META } from './StatusProvider'
 
 type Tab = 'overview' | 'mutuals'
@@ -140,6 +141,19 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             willChange: 'transform',
           }}
         >
+          {/* Profile attachment — top-right of card */}
+          {profile?.is_premium && profile.profile_attachment && (() => {
+            const att = ATTACHMENTS.find(a => a.id === profile.profile_attachment)
+            return att ? (
+              <img
+                src={att.src}
+                alt={att.label}
+                className="absolute z-[15] pointer-events-none select-none"
+                style={{ top: 4, right: 36, height: 88 }}
+              />
+            ) : null
+          })()}
+
           {/* Shine highlight that follows cursor */}
           <div
             className="absolute inset-0 pointer-events-none z-20 rounded-lg"

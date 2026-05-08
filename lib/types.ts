@@ -32,6 +32,7 @@ export type Profile = {
   has_ai_access?: boolean
   hide_ai?: boolean
   sidebar_animation?: string | null
+  profile_attachment?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>
