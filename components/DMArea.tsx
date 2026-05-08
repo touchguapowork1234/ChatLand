@@ -11,6 +11,7 @@ import { useProfileCard } from './ProfileCardProvider'
 import FileAttachment from './FileAttachment'
 import { renderContent } from '@/lib/renderContent'
 import AvatarWithDecoration from './AvatarWithDecoration'
+import MiniProfileCard from './MiniProfileCard'
 
 interface Props {
   dmId: string
@@ -27,6 +28,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const { callState, callingUserId, incomingCallerId, isMuted, partnerMuted, duration,
           startCall, endCall, leaveCall, rejoinCall, acceptCall, declineCall, toggleMute } = useCall()
   const { openProfile } = useProfileCard()
+  const [miniCard, setMiniCard] = useState<{ userId: string; anchor: { x: number; y: number } } | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; userId: string } | null>(null)
   const [nickname, setNickname]           = useState<string | null>(null)
   const [nicknameModal, setNicknameModal] = useState(false)
@@ -481,6 +483,15 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         onChange={e => { const f = e.target.files?.[0]; if (f) pickFile(f); e.target.value = '' }}
       />
 
+      {miniCard && (
+        <MiniProfileCard
+          userId={miniCard.userId}
+          currentUserId={currentUserId}
+          anchor={miniCard.anchor}
+          onClose={() => setMiniCard(null)}
+        />
+      )}
+
       {ctxMenu && (
         <ContextMenu
           x={ctxMenu.x} y={ctxMenu.y}
@@ -720,7 +731,14 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div key={msg.id}
               className={`chat-msg-animate flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
               {!grouped ? (
-                <div onContextMenu={e => onCtx(e, msg.sender_id)} className="mt-0.5">
+                <div
+                  onContextMenu={e => onCtx(e, msg.sender_id)}
+                  onClick={e => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setMiniCard({ userId: msg.sender_id, anchor: { x: rect.right + 10, y: rect.top } })
+                  }}
+                  className="mt-0.5 cursor-pointer"
+                >
                   <AvatarWithDecoration
                     avatarUrl={msg.profiles?.avatar_url}
                     displayInitial={(msg.profiles?.display_name || msg.profiles?.username || '?').charAt(0).toUpperCase()}
