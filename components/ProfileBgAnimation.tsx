@@ -241,12 +241,6 @@ export function BloodmoonAnimation({ opacity = 1 }: { opacity?: number }) {
         ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = mg; ctx.fill()
       }
 
-      // Rim glow over image
-      const rim = ctx.createRadialGradient(mx, my, mr * 0.65, mx, my, mr)
-      rim.addColorStop(0, 'rgba(255,50,0,0)')
-      rim.addColorStop(1, 'rgba(255,70,10,0.18)')
-      ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI * 2); ctx.fillStyle = rim; ctx.fill()
-
       // Rising embers
       for (const e of embers) {
         e.y -= e.speed / 100
