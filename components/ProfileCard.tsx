@@ -169,7 +169,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
                   src={att.src}
                   alt={att.label}
                   className="absolute pointer-events-none select-none"
-                  style={{ bottom: 0, right: 40, height: 96, transform: 'translateY(35%)', zIndex: 20 }}
+                  style={{ bottom: 0, right: 40, height: 96, zIndex: 20 }}
                 />
               ) : null
             })()}
