@@ -361,8 +361,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         cardSecondary    !== (profile.card_secondary     ?? '#7983f5') ||
         profileTiltEnabled !== (profile.profile_tilt_enabled ?? false) ||
         bgAnimEnabled    !== !!(profile.profile_bg_animation) ||
+        (bgAnimEnabled && bgAnimType !== (profile.profile_bg_animation ?? 'shooting_stars')) ||
         bgAnimOpacity    !== (profile.profile_bg_opacity ?? 1) ||
         sidebarAnimEnabled !== !!(profile.sidebar_animation) ||
+        (sidebarAnimEnabled && sidebarAnimType !== (profile.sidebar_animation ?? 'shooting_stars')) ||
         decoration       !== (profile.profile_decoration ?? null) ||
         glowEnabled      !== (profile.profile_glow_enabled  ?? false) ||
         glowColor        !== (profile.profile_glow_color    ?? '#5865f2') ||
@@ -379,8 +381,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [displayName, bio, alignerSrc, tag, hideAi, isPremium, bannerSrc, themeEnabled, cardEnabled,
       themePrimary, themeSecondary, cardPrimary, cardSecondary, profileTiltEnabled,
-      bgAnimEnabled, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
-      sidebarAnimEnabled,
+      bgAnimEnabled, bgAnimType, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
+      sidebarAnimEnabled, sidebarAnimType,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
       animMessageEntrance, animSmoothTransitions])
 
