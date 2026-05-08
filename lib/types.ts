@@ -30,6 +30,7 @@ export type Profile = {
   profile_glow_color?: string | null
   profile_glow_opacity?: number | null
   has_ai_access?: boolean
+  hide_ai?: boolean
 }
 
 export const userTag = (p?: Profile | null) =>

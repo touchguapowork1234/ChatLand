@@ -112,6 +112,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   // ── AI Character ──
   const [hasAiAccess, setHasAiAccess]   = useState(profile.has_ai_access ?? false)
+  const [hideAi, setHideAi]             = useState(profile.hide_ai ?? false)
   const [aiCodeInput, setAiCodeInput]   = useState('')
   const [aiCodeLoading, setAiCodeLoading] = useState(false)
   const [aiCodeMsg, setAiCodeMsg]       = useState<{ ok: boolean; text: string } | null>(null)
@@ -336,6 +337,13 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     setCodeMsg({ ok: true, text: 'Yasu Premium activated!' })
     onUpdated({ ...profile, is_premium: true })
     setCodeLoading(false)
+  }
+
+  // ── Toggle hide AI ──
+  const toggleHideAi = async (val: boolean) => {
+    setHideAi(val)
+    await supabase.from('profiles').update({ hide_ai: val }).eq('id', profile.id)
+    onUpdated({ ...profile, hide_ai: val })
   }
 
   // ── Redeem AI character code ──
@@ -1228,7 +1236,22 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm text-[#23a55a] font-medium">✓ AI Character is active on your account.</p>
+                  <div className="space-y-4">
+                    <p className="text-sm text-[#23a55a] font-medium">✓ AI Character is active on your account.</p>
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="text-sm text-[#dbdee1] font-medium">Hide AI chatbots</p>
+                        <p className="text-xs text-[#4e5058] mt-0.5">Remove AI chatbots from your DMs list.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => toggleHideAi(!hideAi)}
+                        className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${hideAi ? 'bg-[#5865f2]' : 'bg-[#4e5058]'}`}
+                      >
+                        <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${hideAi ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
 
