@@ -348,6 +348,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       bio !== (profile.bio ?? '') ||
       !!alignerSrc ||
       tag !== profile.tag ||
+      hideAi !== (profile.hide_ai ?? false) ||
       (isPremium && (
         !!bannerSrc ||
         themeEnabled     !== (profile.theme_enabled      ?? true)  ||
@@ -373,7 +374,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       ))
     setIsDirty(dirty)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [displayName, bio, alignerSrc, tag, isPremium, bannerSrc, themeEnabled, cardEnabled,
+  }, [displayName, bio, alignerSrc, tag, hideAi, isPremium, bannerSrc, themeEnabled, cardEnabled,
       themePrimary, themeSecondary, cardPrimary, cardSecondary, profileTiltEnabled,
       bgAnimEnabled, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
@@ -389,17 +390,17 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       jobs.push(saveTag())
     if (isPremium)
       jobs.push(savePremiumSettings())
+    if (hideAi !== (profile.hide_ai ?? false))
+      jobs.push(supabase.from('profiles').update({ hide_ai: hideAi }).eq('id', profile.id).then(() => {
+        onUpdated({ ...profile, hide_ai: hideAi })
+      }))
     await Promise.all(jobs)
     setSaveAllLoading(false)
     setIsDirty(false)
   }
 
   // ── Toggle hide AI ──
-  const toggleHideAi = async (val: boolean) => {
-    setHideAi(val)
-    await supabase.from('profiles').update({ hide_ai: val }).eq('id', profile.id)
-    onUpdated({ ...profile, hide_ai: val })
-  }
+  const toggleHideAi = (val: boolean) => setHideAi(val)
 
   // ── Redeem AI character code ──
   const redeemAiCode = async () => {
