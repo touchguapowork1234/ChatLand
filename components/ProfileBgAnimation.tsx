@@ -381,6 +381,113 @@ export function BluemoonAnimation({ opacity = 1 }: { opacity?: number }) {
   )
 }
 
+// ── Solar ─────────────────────────────────────────────────────────────────────
+
+interface Mote { x: number; y: number; r: number; vx: number; vy: number; phase: number; a: number }
+
+export function SolarAnimation({ opacity = 1 }: { opacity?: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')!
+    let raf = 0
+
+    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight }
+    resize()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    const stars = Array.from({ length: 120 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.0 + 0.2,
+      a: Math.random() * 0.45 + 0.15,
+      warm: Math.random() > 0.45,
+    }))
+
+    const motes: Mote[] = Array.from({ length: 60 }, () => ({
+      x: Math.random(), y: Math.random(),
+      r: 0.4 + Math.random() * 1.4,
+      vx: 0.04 + Math.random() * 0.1,
+      vy: (Math.random() - 0.5) * 0.04,
+      phase: Math.random() * Math.PI * 2,
+      a: 0.3 + Math.random() * 0.5,
+    }))
+
+    const moonImg = new Image(); moonImg.src = '/solar_moon.png'
+    const saturnImg = new Image(); saturnImg.src = '/solar_saturn.png'
+
+    let t = 0
+    const draw = () => {
+      raf = requestAnimationFrame(draw)
+      const W = canvas.width; const H = canvas.height
+      t += 0.016
+      ctx.clearRect(0, 0, W, H)
+
+      // Deep space with warm amber haze
+      const sky = ctx.createLinearGradient(0, 0, 0, H)
+      sky.addColorStop(0, '#080501')
+      sky.addColorStop(0.4, '#100a02')
+      sky.addColorStop(1, '#1a1005')
+      ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H)
+
+      // Warm glow behind moon (top-right)
+      const haze = ctx.createRadialGradient(W * 0.82, H * 0.18, 0, W * 0.82, H * 0.18, W * 0.3)
+      haze.addColorStop(0, 'rgba(255,180,60,0.08)')
+      haze.addColorStop(1, 'rgba(0,0,0,0)')
+      ctx.fillStyle = haze; ctx.fillRect(0, 0, W, H)
+
+      // Stars
+      for (const s of stars) {
+        ctx.beginPath()
+        ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2)
+        ctx.fillStyle = s.warm ? `rgba(255,210,120,${s.a})` : `rgba(255,240,200,${s.a})`
+        ctx.fill()
+      }
+
+      // Solar moon — top-right, drawn as-is (pixel art, no clip)
+      const mr = Math.min(W, H) * 0.13
+      const mx = W * 0.80; const my = H * 0.20
+      if (moonImg.complete && moonImg.naturalWidth > 0)
+        ctx.drawImage(moonImg, mx - mr, my - mr, mr * 2, mr * 2)
+
+      // Saturn — lower-left, wider to preserve aspect ratio
+      const sh = Math.min(W, H) * 0.18
+      const sw = sh * 1.5
+      const sx = W * 0.14; const sy = H * 0.76
+      if (saturnImg.complete && saturnImg.naturalWidth > 0)
+        ctx.drawImage(saturnImg, sx - sw / 2, sy - sh / 2, sw, sh)
+
+      // Solar wind motes
+      for (const m of motes) {
+        m.x += m.vx / 100
+        m.y += (m.vy + Math.sin(t * 0.6 + m.phase) * 0.015) / 100
+        if (m.x > 1.05) { m.x = -0.05; m.y = Math.random() }
+        if (m.y > 1.05) m.y = -0.05
+        if (m.y < -0.05) m.y = 1.05
+
+        const px = m.x * W; const py = m.y * H
+        const pa = m.a * (0.6 + Math.sin(t * 1.2 + m.phase) * 0.4)
+        const g = ctx.createRadialGradient(px, py, 0, px, py, m.r * 3)
+        g.addColorStop(0, `rgba(255,200,80,${pa * 0.9})`)
+        g.addColorStop(0.5, `rgba(255,140,30,${pa * 0.35})`)
+        g.addColorStop(1, 'rgba(200,80,0,0)')
+        ctx.beginPath(); ctx.arc(px, py, m.r * 3, 0, Math.PI * 2); ctx.fillStyle = g; ctx.fill()
+        ctx.beginPath(); ctx.arc(px, py, m.r, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255,230,150,${pa})`; ctx.fill()
+      }
+    }
+
+    draw()
+    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+  }, [])
+
+  return (
+    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ borderRadius: 'inherit', opacity }} />
+  )
+}
+
 // ── Snow ──────────────────────────────────────────────────────────────────────
 
 interface Flake { x: number; y: number; r: number; speed: number; drift: number; phase: number; a: number }

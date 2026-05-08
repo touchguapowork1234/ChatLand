@@ -1144,6 +1144,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                   { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
                                   { id: 'bloodmoon',      label: 'Bloodmoon',      desc: 'Crimson night sky with a blood-red moon and rising embers' },
                                   { id: 'bluemoon',       label: 'Bluemoon',       desc: 'Midnight blue sky with a blue moon and drifting luminescent wisps' },
+                                  { id: 'solar',          label: 'Solar',          desc: 'Warm amber space with a moon, Saturn, and drifting solar wind particles' },
                                 ] as { id: string; label: string; desc: string }[]).map(opt => (
                                   <button
                                     key={opt.id}
@@ -1211,6 +1212,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                   { id: 'snow',           label: 'Snow',           desc: 'Soft drifting snow particles' },
                                   { id: 'bloodmoon',      label: 'Bloodmoon',      desc: 'Crimson night sky with a blood-red moon and rising embers' },
                                   { id: 'bluemoon',       label: 'Bluemoon',       desc: 'Midnight blue sky with a blue moon and drifting luminescent wisps' },
+                                  { id: 'solar',          label: 'Solar',          desc: 'Warm amber space with a moon, Saturn, and drifting solar wind particles' },
                                 ] as { id: string; label: string; desc: string }[]).map(opt => (
                                   <button
                                     key={opt.id}
