@@ -117,9 +117,22 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         ref={wrapperRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="profile-card-animate"
+        className="profile-card-animate relative"
         style={{ perspective: '1000px', perspectiveOrigin: '50% 50%' }}
       >
+        {/* Profile attachment — outside overflow-hidden card so it can overlap freely */}
+        {profile?.is_premium && profile.profile_attachment && (() => {
+          const att = ATTACHMENTS.find(a => a.id === profile.profile_attachment)
+          return att ? (
+            <img
+              src={att.src}
+              alt={att.label}
+              className="absolute pointer-events-none select-none z-30"
+              style={{ top: -16, right: 36, height: 88 }}
+            />
+          ) : null
+        })()}
+
         {/* Card — receives the tilt transform */}
         <div
           className="relative rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col"
@@ -141,19 +154,6 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             willChange: 'transform',
           }}
         >
-          {/* Profile attachment — top-right of card */}
-          {profile?.is_premium && profile.profile_attachment && (() => {
-            const att = ATTACHMENTS.find(a => a.id === profile.profile_attachment)
-            return att ? (
-              <img
-                src={att.src}
-                alt={att.label}
-                className="absolute z-[15] pointer-events-none select-none"
-                style={{ top: 4, right: 36, height: 88 }}
-              />
-            ) : null
-          })()}
-
           {/* Shine highlight that follows cursor */}
           <div
             className="absolute inset-0 pointer-events-none z-20 rounded-lg"
