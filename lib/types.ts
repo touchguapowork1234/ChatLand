@@ -33,6 +33,9 @@ export type Profile = {
   hide_ai?: boolean
   sidebar_animation?: string | null
   profile_attachment?: string | null
+  total_messages_sent?: number
+  star_count?: number
+  star_effect_expires_at?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>

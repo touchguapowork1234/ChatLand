@@ -793,7 +793,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 ) : (
                   <>
                     {msg.content && (
-                      <p className="text-[#dcddde] text-sm leading-relaxed break-words whitespace-pre-wrap">
+                      <p className={`text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date() ? 'rainbow-text' : 'text-[#dcddde]'}`}>
                         {renderMentions(msg.content)}
                         {msg.updated_at && (
                           <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>

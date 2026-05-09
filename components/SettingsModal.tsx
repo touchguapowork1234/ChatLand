@@ -11,7 +11,7 @@ import { DECORATIONS } from '@/lib/decorations'
 import { ATTACHMENTS } from '@/lib/attachments'
 import AvatarWithDecoration from './AvatarWithDecoration'
 
-type Tab = 'profile' | 'account' | 'admin'
+type Tab = 'profile' | 'inventory' | 'account' | 'admin'
 
 type PremiumCode = { code: string; redeemed_by: string | null; created_at: string }
 
@@ -141,6 +141,42 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // ── Inventory tab ──
+  const [starCount, setStarCount]         = useState(profile.star_count ?? 0)
+  const [totalMsgSent]                    = useState(profile.total_messages_sent ?? 0)
+  const [starExpiresAt, setStarExpiresAt] = useState<string | null>(profile.star_effect_expires_at ?? null)
+  const [starTimeLeft, setStarTimeLeft]   = useState(0)
+  const [useStarLoading, setUseStarLoading] = useState(false)
+
+  useEffect(() => {
+    if (!starExpiresAt) { setStarTimeLeft(0); return }
+    const tick = () => {
+      const left = Math.max(0, Math.floor((new Date(starExpiresAt).getTime() - Date.now()) / 1000))
+      setStarTimeLeft(left)
+      if (left === 0) setStarExpiresAt(null)
+    }
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [starExpiresAt])
+
+  const useStar = async () => {
+    if (starCount <= 0 || useStarLoading) return
+    setUseStarLoading(true)
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString()
+    const { error } = await supabase.from('profiles').update({
+      star_count: starCount - 1,
+      star_effect_expires_at: expiresAt,
+    }).eq('id', profile.id)
+    if (!error) {
+      setStarCount(c => c - 1)
+      setStarExpiresAt(expiresAt)
+    }
+    setUseStarLoading(false)
+  }
+
+  const fmtStarTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 
   // ── Admin tab ──
   const [adminCodes, setAdminCodes]   = useState<PremiumCode[]>([])
@@ -623,14 +659,14 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#949ba4] mb-2 px-2">
             User Settings
           </p>
-          {(['profile', 'account', ...(profile.is_admin ? ['admin'] : [])] as Tab[]).map(t => (
+          {(['profile', 'inventory', 'account', ...(profile.is_admin ? ['admin'] : [])] as Tab[]).map(t => (
             <button key={t} onClick={() => { setTab(t); if (t === 'admin' && !adminLoaded) loadAdminCodes() }}
               className={`w-full text-left px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize mb-0.5 ${
                 tab === t
                   ? 'bg-[#404249] text-[#dbdee1]'
                   : 'text-[#949ba4] hover:bg-[#35373c] hover:text-[#dbdee1]'
               } ${t === 'admin' ? 'text-red-400 hover:text-red-300' : ''}`}>
-              {t === 'profile' ? 'Profile' : t === 'account' ? 'Account' : '⚙ Admin'}
+              {t === 'profile' ? 'Profile' : t === 'inventory' ? 'Inventory' : t === 'account' ? 'Account' : '⚙ Admin'}
             </button>
           ))}
         </div>
@@ -639,7 +675,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className={`text-xl font-bold ${tab === 'admin' ? 'text-red-400' : 'text-[#dbdee1]'}`}>
-              {tab === 'profile' ? 'Profile' : tab === 'account' ? 'Account' : 'Admin Panel'}
+              {tab === 'profile' ? 'Profile' : tab === 'inventory' ? 'Inventory' : tab === 'account' ? 'Account' : 'Admin Panel'}
             </h2>
             <button onClick={onClose} className="text-[#949ba4] hover:text-[#dbdee1] transition-colors">
               <X className="w-5 h-5" />
@@ -744,6 +780,64 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                 className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm">
                 {profileLoading ? 'Saving…' : 'Save Changes'}
               </button>
+            </div>
+          )}
+
+          {/* ══ Inventory tab ══ */}
+          {tab === 'inventory' && (
+            <div className="space-y-6">
+              {/* Progress to next star */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">Progress</p>
+                <p className="text-sm text-[#949ba4]">Send messages to earn Stars. Every 50 messages earns you one.</p>
+                <div className="mt-3">
+                  <div className="flex justify-between text-xs text-[#949ba4] mb-1.5">
+                    <span>Messages until next star</span>
+                    <span>{totalMsgSent % 50} / 50</span>
+                  </div>
+                  <div className="h-2 bg-[#1e1f22] rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${(totalMsgSent % 50) / 50 * 100}%`,
+                        background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Items */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Items</p>
+                {/* Rainbow Star */}
+                <div className="flex items-center gap-4 p-4 bg-[#1e1f22] rounded-lg">
+                  <div className="relative shrink-0">
+                    <img src="/inventory/star.png" alt="Star" className="w-16 h-16 object-contain" />
+                    <span className="absolute -bottom-1 -right-1 bg-[#5865f2] text-white text-[11px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {starCount}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#dbdee1]">Rainbow Star</p>
+                    <p className="text-sm text-[#949ba4] mt-0.5">Makes all your messages rainbow for 5 minutes.</p>
+                    {starExpiresAt && starTimeLeft > 0 && (
+                      <p className="text-xs text-[#ffd700] mt-1.5 font-medium">✨ Active — {fmtStarTime(starTimeLeft)} remaining</p>
+                    )}
+                  </div>
+                  <button
+                    onClick={useStar}
+                    disabled={starCount <= 0 || useStarLoading || (!!starExpiresAt && starTimeLeft > 0)}
+                    className="px-4 py-2 font-semibold rounded-md transition-colors text-sm shrink-0 disabled:bg-[#383a40] disabled:cursor-not-allowed disabled:text-[#4e5058]"
+                    style={starCount > 0 && !(starExpiresAt && starTimeLeft > 0) ? {
+                      background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
+                      color: '#1a1a1a',
+                    } : {}}
+                  >
+                    {useStarLoading ? '...' : starExpiresAt && starTimeLeft > 0 ? 'Active' : 'Use'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
