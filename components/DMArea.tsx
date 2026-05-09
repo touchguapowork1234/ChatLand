@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Phone, PhoneOff, Mic, MicOff, Send, Pencil, CornerUpLeft, X, Paperclip, Upload, Trash2, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useCall } from '@/components/CallProvider'
@@ -21,11 +21,12 @@ interface Props {
   currentUserId: string
   initialMessages: DmMessage[]
   initialCalls: Call[]
+  hasMore?: boolean
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024
 
-export default function DMArea({ dmId, otherUser, currentUserId, initialMessages, initialCalls }: Props) {
+export default function DMArea({ dmId, otherUser, currentUserId, initialMessages, initialCalls, hasMore }: Props) {
   const supabase = createClient()
   const { callState, callingUserId, incomingCallerId, isMuted, partnerMuted, duration,
           startCall, endCall, leaveCall, rejoinCall, acceptCall, declineCall, toggleMute } = useCall()
@@ -53,7 +54,15 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const [ownProfile, setOwnProfile]   = useState<Profile | null>(null)
   const [mentionQuery, setMentionQuery] = useState<string | null>(null)
   const [mentionAtPos, setMentionAtPos] = useState(0)
-  const bottomRef     = useRef<HTMLDivElement>(null)
+  const [hasMoreOlder, setHasMoreOlder] = useState(hasMore ?? false)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const bottomRef          = useRef<HTMLDivElement>(null)
+  const scrollRef          = useRef<HTMLDivElement>(null)
+  const sentinelRef        = useRef<HTMLDivElement>(null)
+  const scrollRestoreRef   = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
+  const skipNextAutoScrollRef = useRef(false)
+  const loadingOlderRef    = useRef(false)
+  const mountedAtRef       = useRef<number>(Date.now())
   const inputRef      = useRef<HTMLTextAreaElement>(null)
   const fileInputRef  = useRef<HTMLInputElement>(null)
   const dragCounter   = useRef(0)
@@ -146,8 +155,29 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       .then(({ data }) => { if (data) setOwnProfile(data as Profile) })
   }, [currentUserId])
 
-  useEffect(() => { setMessages(initialMessages); setCalls(initialCalls) }, [dmId])
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [timeline.length])
+  useEffect(() => {
+    setMessages(initialMessages)
+    setCalls(initialCalls)
+    setHasMoreOlder(hasMore ?? false)
+    skipNextAutoScrollRef.current = false
+    scrollRestoreRef.current = null
+    loadingOlderRef.current = false
+    mountedAtRef.current = Date.now()
+  }, [dmId])
+
+  useEffect(() => {
+    if (skipNextAutoScrollRef.current) { skipNextAutoScrollRef.current = false; return }
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [timeline.length])
+
+  // Restore scroll position after prepending older messages
+  useLayoutEffect(() => {
+    const r = scrollRestoreRef.current
+    if (!r || !scrollRef.current) return
+    scrollRestoreRef.current = null
+    const newScrollHeight = scrollRef.current.scrollHeight
+    scrollRef.current.scrollTop = r.scrollTop + (newScrollHeight - r.scrollHeight)
+  }, [messages])
 
   useEffect(() => {
     const load = async () => {
@@ -183,6 +213,49 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     await supabase.rpc('remove_friend', { friend_user_id: otherUser.id })
     setIsFriend(false)
   }
+
+  const loadOlderMessages = useCallback(async () => {
+    if (loadingOlderRef.current || !hasMoreOlder) return
+    const oldest = messages[0]
+    if (!oldest) return
+    loadingOlderRef.current = true
+    setLoadingOlder(true)
+    if (scrollRef.current) {
+      scrollRestoreRef.current = {
+        scrollHeight: scrollRef.current.scrollHeight,
+        scrollTop: scrollRef.current.scrollTop,
+      }
+    }
+    skipNextAutoScrollRef.current = true
+    const { data } = await supabase
+      .from('dm_messages')
+      .select('*, profiles(*)')
+      .eq('dm_id', dmId)
+      .lt('created_at', oldest.created_at)
+      .order('created_at', { ascending: false })
+      .limit(25)
+    if (data && data.length > 0) {
+      const older = (data as DmMessage[]).slice().reverse()
+      setMessages(prev => [...older.filter(m => !prev.find(p => p.id === m.id)), ...prev])
+      setHasMoreOlder(data.length === 25)
+    } else {
+      setHasMoreOlder(false)
+      scrollRestoreRef.current = null
+      skipNextAutoScrollRef.current = false
+    }
+    setLoadingOlder(false)
+    loadingOlderRef.current = false
+  }, [dmId, hasMoreOlder, messages])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) loadOlderMessages()
+    }, { threshold: 0 })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [loadOlderMessages])
 
   // Ref tracking the created_at of the newest message we have, for incremental polls
   const latestTsRef = useRef<string | undefined>(undefined)
@@ -232,7 +305,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       .subscribe(status => {
         if (status === 'SUBSCRIBED') {
           if (firstSubscribe) { firstSubscribe = false; return }
-          fetchMessages()
+          fetchNewMessages()
         }
       })
 
@@ -242,9 +315,9 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   // Polling fallback — paused entirely when tab is hidden
   useEffect(() => {
     if (document.visibilityState === 'hidden') return
-    const interval = setInterval(fetchMessages, 5000)
+    const interval = setInterval(fetchNewMessages, 5000)
     const onVisibility = () => {
-      if (document.visibilityState === 'visible') fetchMessages()
+      if (document.visibilityState === 'visible') fetchNewMessages()
     }
     document.addEventListener('visibilitychange', onVisibility)
     return () => {
@@ -671,7 +744,13 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       )}
 
       {/* Timeline */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col">
+      <div key={dmId} ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 flex flex-col dm-area-fade">
+        <div ref={sentinelRef} className="h-1 shrink-0" />
+        {loadingOlder && (
+          <div className="flex justify-center py-3 shrink-0">
+            <Loader2 className="w-5 h-5 animate-spin text-[#949ba4]" />
+          </div>
+        )}
         {timeline.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
@@ -745,9 +824,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           )
           const isHighlighted = isReplyToMe || isMentionedMe
 
+          const isNewMsg = new Date(msg.created_at).getTime() > mountedAtRef.current
           return (
             <div key={msg.id}
-              className={`chat-msg-animate flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
+              className={`${isNewMsg ? 'chat-msg-animate' : ''} flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
               {!grouped ? (
                 <div
                   onContextMenu={e => onCtx(e, msg.sender_id)}

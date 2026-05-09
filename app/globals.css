@@ -40,6 +40,13 @@
   from { opacity: 0; transform: translate(-10px, 6px); }
   to   { opacity: 1; transform: translate(0, 0); }
 }
+@keyframes dmAreaFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.dm-area-fade {
+  animation: dmAreaFadeIn 0.18s ease-out both;
+}
 .rainbow-text {
   background: linear-gradient(90deg, #ff4444, #ff9900, #ffff00, #44ff44, #44ffff, #4488ff, #aa44ff, #ff4444);
   background-size: 200% auto;

@@ -10,7 +10,10 @@
       "Bash(node_modules/.bin/next build *)",
       "Bash(node -e ' *)",
       "Bash(git revert *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
     ]
   }
 }

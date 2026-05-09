@@ -19,12 +19,14 @@ export default async function DMPage({ params }: { params: { dmId: string } }) {
   const otherUserId = dm.user1_id === user.id ? dm.user2_id : dm.user1_id
   const { data: otherUser } = await supabase.from('profiles').select('*').eq('id', otherUserId).single()
 
-  const [{ data: messages }, { data: calls }] = await Promise.all([
+  const PAGE = 25
+  const [{ data: messagesDesc }, { data: calls }] = await Promise.all([
     supabase
       .from('dm_messages')
       .select('*, profiles(*)')
       .eq('dm_id', params.dmId)
-      .order('created_at', { ascending: true }),
+      .order('created_at', { ascending: false })
+      .limit(PAGE),
     supabase
       .from('calls')
       .select('*')
@@ -32,13 +34,17 @@ export default async function DMPage({ params }: { params: { dmId: string } }) {
       .order('created_at', { ascending: true }),
   ])
 
+  const initialMessages = (messagesDesc ?? []).slice().reverse()
+  const hasMore = (messagesDesc ?? []).length === PAGE
+
   return (
     <DMArea
       dmId={params.dmId}
       otherUser={otherUser as Profile}
       currentUserId={user.id}
-      initialMessages={messages ?? []}
+      initialMessages={initialMessages}
       initialCalls={calls ?? []}
+      hasMore={hasMore}
     />
   )
 }
