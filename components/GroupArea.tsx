@@ -53,6 +53,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
   const inputRef     = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragCounter  = useRef(0)
+  const mountedAtRef = useRef<number>(Date.now())
 
   const startEdit = (msg: GroupMessage) => { setEditing(msg.id); setEditContent(msg.content) }
   const cancelEdit = () => setEditing(null)
@@ -116,6 +117,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
     setMessages(prev => prev.filter(m => m.id !== msg.id))
   }
 
+  useEffect(() => { mountedAtRef.current = Date.now() }, [group.id])
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages.length])
 
   const latestTsRef = useRef<string | undefined>(undefined)
@@ -672,7 +674,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                     <div className="flex-1 h-px bg-[#3f4147]" />
                   </div>
                 )}
-                <div className={`chat-msg-animate flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
+                <div className={`chat-msg-animate ${new Date(msg.created_at).getTime() > mountedAtRef.current ? 'chat-msg-enter' : ''} flex items-start gap-4 px-2 py-0.5 rounded hover:bg-[var(--theme-message-hover)] group ${!grouped ? 'mt-4' : ''} ${isHighlighted ? 'bg-[#f0b132]/20' : ''}`}>
                   {!grouped ? (
                     <div onContextMenu={e => onCtx(e, msg.sender_id)} className="mt-0.5">
                       <AvatarWithDecoration

@@ -73,13 +73,13 @@ html.anim-profile-fade .profile-backdrop-animate {
   animation: profileBackdropIn 0.25s ease-out both;
 }
 
-html.anim-chat-fade .chat-msg-animate {
+html.anim-chat-fade .chat-msg-enter {
   animation: chatFadeIn 0.18s ease-out both;
 }
-html.anim-message-entrance .chat-msg-animate {
+html.anim-message-entrance .chat-msg-enter {
   animation: msgEntrance 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-html.anim-chat-fade.anim-message-entrance .chat-msg-animate {
+html.anim-chat-fade.anim-message-entrance .chat-msg-enter {
   animation: chatFadeEntrance 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
