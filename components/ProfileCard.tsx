@@ -303,6 +303,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
               )
             )}
           </div>
+          </div>
         </div>
       </div>
     </div>
