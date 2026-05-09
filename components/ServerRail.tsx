@@ -85,7 +85,7 @@ export default function ServerRail({ servers: initial, userId }: Props) {
             className="relative w-12 h-12 rounded-[50%] hover:rounded-[16px] transition-all duration-150 shrink-0 overflow-hidden bg-[#383a40] flex items-center justify-center text-white text-sm font-bold"
           >
             {dm.otherUser?.avatar_url
-              ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+              ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
             <span className="absolute bottom-0 right-0 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
               {unreadCounts[dm.id] > 99 ? '99+' : unreadCounts[dm.id]}
@@ -100,7 +100,7 @@ export default function ServerRail({ servers: initial, userId }: Props) {
             className="relative w-12 h-12 rounded-[50%] hover:rounded-[16px] transition-all duration-150 shrink-0 bg-[#5865f2] overflow-hidden flex items-center justify-center"
           >
             {g.icon_url
-              ? <img src={g.icon_url} alt="" className="w-full h-full object-cover" />
+              ? <img src={g.icon_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               : <Users className="w-5 h-5 text-white" />}
             <span className="absolute bottom-0 right-0 min-w-[16px] h-4 bg-[#ed4245] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-[3px] leading-none pointer-events-none">
               {unreadCounts[g.id] > 99 ? '99+' : unreadCounts[g.id]}

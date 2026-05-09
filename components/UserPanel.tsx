@@ -49,7 +49,7 @@ export default function UserPanel({ profile: initialProfile }: { profile: Profil
           <div className="relative w-8 h-8 shrink-0">
             <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-sm font-bold select-none">
               {profile?.avatar_url
-                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 : (profile?.display_name || profile?.username)?.charAt(0).toUpperCase()
               }
             </div>

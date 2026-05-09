@@ -56,10 +56,10 @@ export default function AiArea({ profile }: { profile: Profile }) {
     <div className={`w-8 h-8 rounded-full overflow-hidden shrink-0 flex items-center justify-center text-xs font-bold text-white ${isUser ? 'bg-[#5865f2]' : 'bg-[#383a40]'}`}>
       {isUser
         ? (profile.avatar_url
-            ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+            ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
             : profile.username.charAt(0).toUpperCase())
         : (character.avatar_url
-            ? <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
+            ? <img src={character.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
             : <Bot className="w-4 h-4 text-[#949ba4]" />)}
     </div>
   )
@@ -70,7 +70,7 @@ export default function AiArea({ profile }: { profile: Profile }) {
       <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e1f22] shadow-sm shrink-0">
         <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden shrink-0 flex items-center justify-center">
           {character.avatar_url
-            ? <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
+            ? <img src={character.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
             : <Bot className="w-4 h-4 text-white" />}
         </div>
         <div>
@@ -85,7 +85,7 @@ export default function AiArea({ profile }: { profile: Profile }) {
           <div className="flex flex-col items-center justify-center h-full text-center gap-4">
             <div className="w-16 h-16 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center">
               {character.avatar_url
-                ? <img src={character.avatar_url} alt="" className="w-full h-full object-cover" />
+                ? <img src={character.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 : <Bot className="w-8 h-8 text-white" />}
             </div>
             <div>

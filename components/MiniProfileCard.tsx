@@ -61,7 +61,7 @@ export default function MiniProfileCard({ userId, currentUserId, anchor, onClose
       {/* Banner / header */}
       <div className="relative h-14 bg-[#5865f2] shrink-0">
         {profile?.banner_url && (
-          <img src={profile.banner_url} alt="" className="w-full h-full object-cover" />
+          <img src={profile.banner_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
         )}
         <div className="absolute -bottom-6 left-4">
           <div className="relative">

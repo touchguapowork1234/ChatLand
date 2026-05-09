@@ -103,7 +103,7 @@ export default function AddGroupMemberModal({ groupId, currentUserId, currentMem
                   className={`w-full flex items-center gap-3 px-2 py-2 rounded-md transition-colors mb-0.5 ${sel ? 'bg-[#5865f2]/20' : 'hover:bg-[#383a40]'}`}>
                   <div className="w-9 h-9 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-sm font-bold shrink-0 select-none">
                     {p.avatar_url
-                      ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ? <img src={p.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       : (p.display_name || p.username).charAt(0).toUpperCase()}
                   </div>
                   <span className="flex-1 text-left text-sm font-medium text-[#dbdee1]">{displayName(p)}</span>

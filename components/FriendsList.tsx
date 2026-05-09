@@ -306,7 +306,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] group transition-colors">
                     <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                       {profile.avatar_url
-                        ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ? <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                         : (profile.display_name || profile.username).charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -352,7 +352,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
                       <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                         {req.sender?.avatar_url
-                          ? <img src={req.sender.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ? <img src={req.sender.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           : (req.sender?.display_name || req.sender?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -386,7 +386,7 @@ export default function FriendsList({ currentUserId }: { currentUserId: string }
                       className="flex items-center gap-3 p-3 rounded-lg hover:bg-[#35373c] transition-colors">
                       <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0">
                         {req.receiver?.avatar_url
-                          ? <img src={req.receiver.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ? <img src={req.receiver.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           : (req.receiver?.display_name || req.receiver?.username || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className="flex-1 min-w-0">

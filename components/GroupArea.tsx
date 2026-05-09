@@ -514,7 +514,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center shrink-0">
             {group.icon_url
-              ? <img src={group.icon_url} alt="" className="w-full h-full object-cover" />
+              ? <img src={group.icon_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               : <Users className="w-3.5 h-3.5 text-white" />}
           </div>
           <h3 className="font-semibold text-[#dbdee1]">{group.name}</h3>
@@ -596,7 +596,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                       muted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'
                     }`}>
                       {p.profiles?.avatar_url
-                        ? <img src={p.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                        ? <img src={p.profiles.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                         : (p.profiles?.display_name || p.profiles?.username || '?').charAt(0).toUpperCase()}
                     </div>
                     <span className="text-[10px] text-[#dbdee1] font-medium max-w-[52px] truncate text-center">
@@ -618,7 +618,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
             <div className="flex-1 flex flex-col items-center justify-center text-center">
               <div className="w-16 h-16 bg-[#5865f2] rounded-full overflow-hidden flex items-center justify-center mb-4">
                 {group.icon_url
-                  ? <img src={group.icon_url} alt="" className="w-full h-full object-cover" />
+                  ? <img src={group.icon_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   : <Users className="w-8 h-8 text-white" />}
               </div>
               <p className="text-2xl font-bold text-[#dbdee1] mb-1">Welcome to {group.name}!</p>
@@ -788,7 +788,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                   className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-pointer">
                   <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
                     {m.profiles?.avatar_url
-                      ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ? <img src={m.profiles.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       : (m.profiles?.display_name || m.profiles?.username || '?').charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -855,7 +855,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                 >
                   <div className="w-6 h-6 rounded-full overflow-hidden bg-[#383a40] flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {user.avatar_url
-                      ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       : (user.display_name || user.username).charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm text-[#dbdee1] font-medium">{displayName(user)}</span>

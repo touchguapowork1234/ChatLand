@@ -551,7 +551,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
             </button>
             <div className="w-20 h-20 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-3xl font-bold mx-auto mb-4 select-none">
               {incomingData.caller.avatar_url
-                ? <img src={incomingData.caller.avatar_url} alt="" className="w-full h-full object-cover" />
+                ? <img src={incomingData.caller.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 : (incomingData.caller.display_name || incomingData.caller.username).charAt(0).toUpperCase()}
             </div>
             <p className="text-[#949ba4] text-sm mb-1">Incoming voice call</p>
@@ -576,7 +576,7 @@ export default function CallProvider({ userId, children }: { userId: string; chi
           <div className="flex items-center gap-3 mb-3">
             <div className="w-10 h-10 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white font-bold shrink-0 text-sm select-none">
               {otherUser.avatar_url
-                ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">

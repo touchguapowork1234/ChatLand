@@ -399,7 +399,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                 >
                   <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden shrink-0 flex items-center justify-center">
                     {aiCharacter.avatar_url
-                      ? <img src={aiCharacter.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ? <img src={aiCharacter.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       : <Bot className="w-4 h-4 text-white" />}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
@@ -448,7 +448,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     <div className="relative w-8 h-8 shrink-0">
                       <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none">
                         {dm.otherUser?.avatar_url
-                          ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ? <img src={dm.otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           : (dm.otherUser?.display_name || dm.otherUser?.username)?.charAt(0).toUpperCase()}
                       </div>
                       {(unreadCounts[dm.id] ?? 0) > 0 && (
@@ -502,7 +502,7 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
                     <div className="relative w-8 h-8 shrink-0">
                       <div className="w-8 h-8 rounded-full bg-[#5865f2] overflow-hidden flex items-center justify-center">
                         {g.icon_url
-                          ? <img src={g.icon_url} alt="" className="w-full h-full object-cover" />
+                          ? <img src={g.icon_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           : <Users className="w-4 h-4 text-white" />}
                       </div>
                       {(unreadCounts[g.id] ?? 0) > 0 && (

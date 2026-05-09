@@ -179,6 +179,8 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
                 src={profile.banner_url}
                 alt="Banner"
                 className="absolute inset-0 w-full h-full object-cover"
+                loading="lazy"
+                decoding="async"
               />
             )}
             <button
@@ -291,7 +293,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
                     <div key={m.id} className="flex items-center gap-3 py-1.5">
                       <div className="w-8 h-8 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold shrink-0 select-none">
                         {m.avatar_url
-                          ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ? <img src={m.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                           : (m.display_name || m.username).charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">

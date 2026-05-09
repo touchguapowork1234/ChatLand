@@ -614,7 +614,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
         <div className="flex items-center gap-2" onContextMenu={e => onCtx(e, otherUser.id)}>
           <div className="w-7 h-7 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-xs font-bold select-none cursor-pointer">
             {otherUser.avatar_url
-              ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+              ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
               : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
           </div>
           <span className="font-semibold text-[#dbdee1]">{nickname ?? displayName(otherUser)}</span>
@@ -665,7 +665,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div className="flex flex-col items-center gap-1.5">
               <div className={`w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ${isMuted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'}`}>
                 {ownProfile?.avatar_url
-                  ? <img src={ownProfile.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ? <img src={ownProfile.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   : (ownProfile?.display_name || ownProfile?.username || 'Y').charAt(0).toUpperCase()}
               </div>
               <span className="text-[11px] text-[#dbdee1] font-medium text-center max-w-[72px] truncate">{displayName(ownProfile) || 'You'}</span>
@@ -674,7 +674,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div className="flex flex-col items-center gap-1.5">
               <div className={`w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ${partnerMuted ? 'ring-red-500/70' : 'ring-[#23a55a]/70'}`}>
                 {otherUser.avatar_url
-                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
               </div>
               <span className="text-[11px] text-[#dbdee1] font-medium text-center max-w-[72px] truncate">{displayName(otherUser)}</span>
@@ -709,7 +709,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div className="flex flex-col items-center gap-1.5">
               <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] opacity-50 ring-2 ring-[#4e5058]/50">
                 {otherUser.avatar_url
-                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
               </div>
               <span className="text-[11px] text-[#6d6f78] font-medium max-w-[72px] truncate text-center">{displayName(otherUser)}</span>
@@ -735,7 +735,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
             <div className="flex flex-col items-center gap-1.5">
               <div className="w-[60px] h-[60px] rounded-full overflow-hidden flex items-center justify-center text-white text-xl font-bold shrink-0 select-none bg-[#383a40] ring-2 ring-[#23a55a]/70">
                 {otherUser.avatar_url
-                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                  ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                   : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
               </div>
               <span className="text-[11px] text-[#dbdee1] font-medium max-w-[72px] truncate text-center">{displayName(otherUser)}</span>
@@ -762,7 +762,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
           <div className="flex-1 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 rounded-full bg-[#383a40] overflow-hidden flex items-center justify-center text-white text-2xl font-bold mb-4 select-none">
               {otherUser.avatar_url
-                ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" />
+                ? <img src={otherUser.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                 : (otherUser.display_name || otherUser.username).charAt(0).toUpperCase()}
             </div>
             <p className="text-2xl font-bold text-[#dbdee1] mb-1">{displayName(otherUser)}</p>
@@ -995,7 +995,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 >
                   <div className="w-6 h-6 rounded-full overflow-hidden bg-[#383a40] flex items-center justify-center text-white text-xs font-bold shrink-0">
                     {user.avatar_url
-                      ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
                       : (user.display_name || user.username).charAt(0).toUpperCase()}
                   </div>
                   <span className="text-sm text-[#dbdee1] font-medium">{displayName(user)}</span>

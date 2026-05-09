@@ -45,7 +45,7 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
         }}
       >
         {avatarUrl
-          ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
+          ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" loading="lazy" decoding="async" />
           : displayInitial}
       </div>
 
