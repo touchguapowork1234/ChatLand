@@ -1,8 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 import type { Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
+
+// useLayoutEffect runs synchronously before first paint on client only.
+// Avoids the SSR mismatch: useState initializers run on the server (capturing
+// server time), but animationDelay semantics are relative to client mount time.
+// With this, every instance — SSR'd or dynamically added — computes its delay
+// at client mount time, so frame(T) = T % 4000 for all, permanently synced.
+const useClientLayoutEffect =
+  typeof window !== 'undefined' ? useLayoutEffect : () => {}
 
 interface Props {
   profile?: Profile | null
@@ -11,9 +19,11 @@ interface Props {
 }
 
 export default function GradientName({ profile, className, context }: Props) {
-  // Captured once at mount — gives animationDelay that syncs all elements to the
-  // same phase: frame shown = (T - mountTime + mountTime % 4000) % 4000 = T % 4000
-  const [delay] = useState(() => `-${Date.now() % 4000}ms`)
+  const [delay, setDelay] = useState('0ms')
+
+  useClientLayoutEffect(() => {
+    setDelay(`-${Date.now() % 4000}ms`)
+  }, [])
 
   const name = displayName(profile)
   const hasGradient = !!(
