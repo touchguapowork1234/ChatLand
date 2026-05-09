@@ -100,8 +100,15 @@ export function DmShootingStarsOverlay() {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) cancelAnimationFrame(raf)
+      else if (document.visibilityState !== 'hidden') draw()
+    }, { threshold: 0 })
+    io.observe(canvas)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
   }, [])
 
   return (
@@ -198,8 +205,15 @@ export function DmBloodmoonOverlay() {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) cancelAnimationFrame(raf)
+      else if (document.visibilityState !== 'hidden') draw()
+    }, { threshold: 0 })
+    io.observe(canvas)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
   }, [])
 
   return (
@@ -300,8 +314,15 @@ export function DmBluemoonOverlay() {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) cancelAnimationFrame(raf)
+      else if (document.visibilityState !== 'hidden') draw()
+    }, { threshold: 0 })
+    io.observe(canvas)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
   }, [])
 
   return (
@@ -402,8 +423,15 @@ export function DmSolarOverlay() {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) cancelAnimationFrame(raf)
+      else if (document.visibilityState !== 'hidden') draw()
+    }, { threshold: 0 })
+    io.observe(canvas)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
   }, [])
 
   return (
@@ -466,8 +494,15 @@ export function DmSnowOverlay() {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) cancelAnimationFrame(raf)
+      else if (document.visibilityState !== 'hidden') draw()
+    }, { threshold: 0 })
+    io.observe(canvas)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
   }, [])
 
   return (

@@ -149,10 +149,13 @@ export function ShootingStarsAnimation({ opacity = 1 }: { opacity?: number }) {
       }
     }
 
-    draw()
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
@@ -260,8 +263,10 @@ export function BloodmoonAnimation({ opacity = 1 }: { opacity?: number }) {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis) }
   }, [])
 
   return (
@@ -372,8 +377,10 @@ export function BluemoonAnimation({ opacity = 1 }: { opacity?: number }) {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis) }
   }, [])
 
   return (
@@ -483,8 +490,10 @@ export function SolarAnimation({ opacity = 1 }: { opacity?: number }) {
       }
     }
 
-    draw()
-    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis) }
   }, [])
 
   return (
@@ -567,10 +576,13 @@ export function SnowAnimation({ opacity = 1 }: { opacity?: number }) {
       }
     }
 
-    draw()
+    if (document.visibilityState !== 'hidden') draw()
+    const onVis = () => document.visibilityState === 'hidden' ? cancelAnimationFrame(raf) : draw()
+    document.addEventListener('visibilitychange', onVis)
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
+      document.removeEventListener('visibilitychange', onVis)
     }
   }, [])
 
