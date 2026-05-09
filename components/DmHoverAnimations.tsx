@@ -108,7 +108,7 @@ export function DmShootingStarsOverlay() {
       else if (document.visibilityState !== 'hidden') draw()
     }, { threshold: 0 })
     io.observe(canvas)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect(); canvas.width = 0; canvas.height = 0 }
   }, [])
 
   return (
@@ -213,7 +213,7 @@ export function DmBloodmoonOverlay() {
       else if (document.visibilityState !== 'hidden') draw()
     }, { threshold: 0 })
     io.observe(canvas)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect(); canvas.width = 0; canvas.height = 0 }
   }, [])
 
   return (
@@ -322,7 +322,7 @@ export function DmBluemoonOverlay() {
       else if (document.visibilityState !== 'hidden') draw()
     }, { threshold: 0 })
     io.observe(canvas)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect(); canvas.width = 0; canvas.height = 0 }
   }, [])
 
   return (
@@ -431,7 +431,7 @@ export function DmSolarOverlay() {
       else if (document.visibilityState !== 'hidden') draw()
     }, { threshold: 0 })
     io.observe(canvas)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect(); canvas.width = 0; canvas.height = 0 }
   }, [])
 
   return (
@@ -502,7 +502,7 @@ export function DmSnowOverlay() {
       else if (document.visibilityState !== 'hidden') draw()
     }, { threshold: 0 })
     io.observe(canvas)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect() }
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); document.removeEventListener('visibilitychange', onVis); io.disconnect(); canvas.width = 0; canvas.height = 0 }
   }, [])
 
   return (
