@@ -90,6 +90,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [sidebarAnimEnabled, setSidebarAnimEnabled] = useState(!!(profile.sidebar_animation))
   const [sidebarAnimType, setSidebarAnimType]       = useState<string>(profile.sidebar_animation ?? 'shooting_stars')
   const [profileAttachment, setProfileAttachment]   = useState<string | null>(profile.profile_attachment ?? null)
+  const [nameGradientEnabled, setNameGradientEnabled]       = useState(profile.name_gradient_enabled ?? false)
+  const [nameGradientPrimary, setNameGradientPrimary]       = useState(profile.name_gradient_primary ?? '#5865f2')
+  const [nameGradientSecondary, setNameGradientSecondary]   = useState(profile.name_gradient_secondary ?? '#eb459e')
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -494,6 +497,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         glowEnabled      !== (profile.profile_glow_enabled  ?? false) ||
         glowColor        !== (profile.profile_glow_color    ?? '#5865f2') ||
         glowOpacity      !== (profile.profile_glow_opacity  ?? 0.8) ||
+        nameGradientEnabled   !== (profile.name_gradient_enabled   ?? false) ||
+        nameGradientPrimary   !== (profile.name_gradient_primary   ?? '#5865f2') ||
+        nameGradientSecondary !== (profile.name_gradient_secondary ?? '#eb459e') ||
         animEnabled          !== (profile.animations_enabled    ?? false) ||
         animProfileFade      !== (profile.anim_profile_fade     ?? true)  ||
         animChatFade         !== (profile.anim_chat_fade        ?? true)  ||
@@ -508,6 +514,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       themePrimary, themeSecondary, cardPrimary, cardSecondary, profileTiltEnabled,
       bgAnimEnabled, bgAnimType, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
       sidebarAnimEnabled, sidebarAnimType, profileAttachment,
+      nameGradientEnabled, nameGradientPrimary, nameGradientSecondary,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
       animMessageEntrance, animSmoothTransitions])
 
@@ -708,6 +715,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       profile_glow_opacity:  glowOpacity,
       sidebar_animation:     sidebarAnimEnabled ? sidebarAnimType : null,
       profile_attachment:    profileAttachment,
+      name_gradient_enabled:   nameGradientEnabled,
+      name_gradient_primary:   nameGradientEnabled ? nameGradientPrimary : null,
+      name_gradient_secondary: nameGradientEnabled ? nameGradientSecondary : null,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -1275,6 +1285,61 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Public Profile</p>
                       <div className="bg-[#1e1f22] rounded-lg p-4 space-y-4">
+                        {/* Gradient Name */}
+                        <div>
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="min-w-0">
+                              <p className="text-sm text-[#dbdee1] font-medium">Gradient Name</p>
+                              <p className="text-xs text-[#4e5058] mt-0.5 leading-relaxed">
+                                Display your name with a color gradient in messages and your profile card
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setNameGradientEnabled(v => !v)}
+                              className={`relative w-9 h-[18px] rounded-full transition-colors duration-200 shrink-0 ${nameGradientEnabled ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                            >
+                              <span className={`absolute left-0.5 top-0.5 w-3.5 h-3.5 rounded-full bg-white shadow transition-transform duration-200 ${nameGradientEnabled ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+                            </button>
+                          </div>
+                          {nameGradientEnabled && (
+                            <div className="mt-3 bg-[#232428] rounded-lg p-3 flex items-center gap-4 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs text-[#949ba4]">From</label>
+                                <input
+                                  type="color"
+                                  value={nameGradientPrimary}
+                                  onChange={e => setNameGradientPrimary(e.target.value)}
+                                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+                                />
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs text-[#949ba4]">To</label>
+                                <input
+                                  type="color"
+                                  value={nameGradientSecondary}
+                                  onChange={e => setNameGradientSecondary(e.target.value)}
+                                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+                                />
+                              </div>
+                              <span
+                                className="text-sm font-semibold"
+                                style={{
+                                  background: `linear-gradient(90deg, ${nameGradientPrimary}, ${nameGradientSecondary})`,
+                                  WebkitBackgroundClip: 'text',
+                                  WebkitTextFillColor: 'transparent',
+                                  backgroundClip: 'text',
+                                }}
+                              >
+                                {profile.display_name || profile.username}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Divider */}
+                        <div className="border-t border-[#2b2d31]" />
+
                         {/* Profile Tilt */}
                         <div className="flex items-center justify-between gap-4">
                           <div className="min-w-0">

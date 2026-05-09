@@ -13,6 +13,7 @@ import { useGroupCall } from './GroupCallProvider'
 import { renderContent } from '@/lib/renderContent'
 import AvatarWithDecoration from './AvatarWithDecoration'
 import RainbowText from './RainbowText'
+import GradientName from './GradientName'
 
 interface Props {
   group: GroupChat
@@ -692,7 +693,7 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
                     )}
                     {!grouped && (
                       <div className="flex items-baseline gap-2 mb-0.5">
-                        <span className="font-semibold text-[#dbdee1] text-sm">{displayName(msg.profiles)}</span>
+                        <GradientName profile={msg.profiles} className="font-semibold text-[#dbdee1] text-sm" />
                         <span className="text-[11px] text-[#949ba4]">{fmtTime(msg.created_at)}</span>
                       </div>
                     )}

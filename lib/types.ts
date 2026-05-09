@@ -36,6 +36,9 @@ export type Profile = {
   total_messages_sent?: number
   star_count?: number
   star_effect_expires_at?: string | null
+  name_gradient_enabled?: boolean
+  name_gradient_primary?: string | null
+  name_gradient_secondary?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>

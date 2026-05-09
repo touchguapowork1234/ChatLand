@@ -7,6 +7,7 @@ import type { Profile } from '@/lib/types'
 import { displayName, userTag } from '@/lib/types'
 import { ShootingStarsAnimation, SnowAnimation, BloodmoonAnimation, BluemoonAnimation, SolarAnimation } from './ProfileBgAnimation'
 import AvatarWithDecoration from './AvatarWithDecoration'
+import GradientName from './GradientName'
 import { ATTACHMENTS } from '@/lib/attachments'
 import { useStatus, STATUS_META } from './StatusProvider'
 
@@ -219,7 +220,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             ) : (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xl font-bold text-[#dbdee1] leading-tight">{displayName(profile)}</p>
+                  <p className="text-xl font-bold leading-tight"><GradientName profile={profile} className="text-[#dbdee1]" /></p>
                   {profile?.is_premium && (
                     <div className="relative group/badge shrink-0">
                       <img
