@@ -1,3 +1,6 @@
+'use client'
+
+import { useState } from 'react'
 import type { Profile } from '@/lib/types'
 import { displayName } from '@/lib/types'
 
@@ -8,6 +11,10 @@ interface Props {
 }
 
 export default function GradientName({ profile, className, context }: Props) {
+  // Captured once at mount — gives animationDelay that syncs all elements to the
+  // same phase: frame shown = (T - mountTime + mountTime % 4000) % 4000 = T % 4000
+  const [delay] = useState(() => `-${Date.now() % 4000}ms`)
+
   const name = displayName(profile)
   const hasGradient = !!(
     profile?.is_premium &&
@@ -28,14 +35,11 @@ export default function GradientName({ profile, className, context }: Props) {
   const p = profile!.name_gradient_primary!
   const s = profile!.name_gradient_secondary!
 
-  // 3-stop loop (p→s→p) makes the animation seamless with no hard edge
   const gradient = moving
     ? `linear-gradient(90deg, ${p}, ${s}, ${p})`
     : `linear-gradient(90deg, ${p}, ${s})`
 
-  const extraClass = moving
-    ? `gradient-name-moving gradient-name-dir-${dir}`
-    : ''
+  const extraClass = moving ? `gradient-name-moving gradient-name-dir-${dir}` : ''
 
   return (
     <span
@@ -45,6 +49,7 @@ export default function GradientName({ profile, className, context }: Props) {
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',
+        ...(moving ? { animationDelay: delay } : {}),
       }}
     >
       {name}
