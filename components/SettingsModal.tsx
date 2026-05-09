@@ -10,6 +10,7 @@ import type { AnimConfig } from './PremiumThemeProvider'
 import { DECORATIONS } from '@/lib/decorations'
 import { ATTACHMENTS } from '@/lib/attachments'
 import AvatarWithDecoration from './AvatarWithDecoration'
+import StaticGif from './StaticGif'
 
 type Tab = 'profile' | 'inventory' | 'account' | 'admin'
 
@@ -1590,7 +1591,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                     : 'border-[#3f4147] bg-[#1e1f22] hover:border-[#5865f2]'
                                 }`}
                               >
-                                <img src={att.src} alt={att.label} className="w-12 h-12 object-contain rounded" />
+                                <StaticGif src={att.src} alt={att.label} className="w-12 h-12 object-contain rounded" style={{ imageRendering: 'auto' }} />
                                 <p className={`text-xs font-medium text-center leading-tight ${profileAttachment === att.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{att.label}</p>
                               </button>
                             ))}
