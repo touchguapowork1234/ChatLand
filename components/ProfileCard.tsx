@@ -103,7 +103,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 overflow-hidden profile-backdrop-animate"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 profile-backdrop-animate"
       onMouseDown={onBackdrop}
     >
       {/* Background animation layer — behind everything */}
