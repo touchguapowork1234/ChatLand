@@ -271,6 +271,11 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     setTimeout(() => setCopiedCode(null), 2000)
   }
 
+  const clearRedeemedCodes = async () => {
+    await supabase.from('premium_codes').delete().not('redeemed_by', 'is', null)
+    loadAdminCodes()
+  }
+
   // ── Admin item codes ──
   const [itemCodes, setItemCodes]           = useState<ItemCode[]>([])
   const [itemCodesLoaded, setItemCodesLoaded] = useState(false)
@@ -309,6 +314,11 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     navigator.clipboard.writeText(code)
     setCopiedItemCode(code)
     setTimeout(() => setCopiedItemCode(null), 2000)
+  }
+
+  const clearRedeemedItemCodes = async () => {
+    await supabase.from('item_codes').delete().not('redeemed_by', 'is', null)
+    loadItemCodes()
   }
 
   // ── Avatar pick ──
@@ -983,9 +993,14 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">
                     All Codes (last 50)
                   </p>
-                  <button onClick={loadAdminCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">
-                    Refresh
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={loadAdminCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">
+                      Refresh
+                    </button>
+                    <button onClick={clearRedeemedCodes} className="text-xs text-red-500 hover:text-red-400 transition-colors">
+                      Clear Redeemed
+                    </button>
+                  </div>
                 </div>
                 {adminCodes.length === 0 ? (
                   <p className="text-sm text-[#4e5058]">No codes yet.</p>
@@ -1036,7 +1051,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
               <div>
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Item Codes (last 50)</p>
-                  <button onClick={loadItemCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">Refresh</button>
+                  <div className="flex items-center gap-3">
+                    <button onClick={loadItemCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">Refresh</button>
+                    <button onClick={clearRedeemedItemCodes} className="text-xs text-red-500 hover:text-red-400 transition-colors">Clear Redeemed</button>
+                  </div>
                 </div>
                 {!itemCodesLoaded ? (
                   <p className="text-sm text-[#4e5058]">Loading…</p>
