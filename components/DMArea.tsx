@@ -12,6 +12,7 @@ import FileAttachment from './FileAttachment'
 import { renderContent } from '@/lib/renderContent'
 import AvatarWithDecoration from './AvatarWithDecoration'
 import MiniProfileCard from './MiniProfileCard'
+import RainbowText from './RainbowText'
 
 interface Props {
   dmId: string
@@ -803,12 +804,12 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
                 ) : (
                   <>
                     {msg.content && (
-                      <p className={`text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date() ? 'rainbow-text' : 'text-[#dcddde]'}`}>
+                      <RainbowText isRainbow={!!(msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date())} className="text-sm leading-relaxed break-words whitespace-pre-wrap">
                         {renderMentions(msg.content)}
                         {msg.updated_at && (
                           <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
                         )}
-                      </p>
+                      </RainbowText>
                     )}
                     {msg.file_url && msg.file_name && msg.file_type && (
                       <FileAttachment url={msg.file_url} name={msg.file_name} type={msg.file_type} />

@@ -52,7 +52,6 @@
   -webkit-text-fill-color: transparent;
   background-clip: text;
   animation: rainbow-shift 3s linear infinite;
-  animation-delay: var(--rainbow-phase, 0ms);
 }
 
 @keyframes gradientShift {

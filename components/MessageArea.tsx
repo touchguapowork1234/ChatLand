@@ -8,6 +8,7 @@ import { displayName } from '@/lib/types'
 import MessageInput from './MessageInput'
 import { renderContent } from '@/lib/renderContent'
 import AvatarWithDecoration from './AvatarWithDecoration'
+import RainbowText from './RainbowText'
 
 type MessageWithProfile = Message & { profiles: Profile }
 
@@ -151,12 +152,12 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                       </p>
                     </div>
                   ) : (
-                    <p className={`text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date() ? 'rainbow-text' : 'text-[#dcddde]'}`}>
+                    <RainbowText isRainbow={!!(msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date())} className="text-sm leading-relaxed break-words whitespace-pre-wrap">
                       {renderContent(msg.content)}
                       {msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 5000 && (
                         <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
                       )}
-                    </p>
+                    </RainbowText>
                   )}
                 </div>
                 {msg.user_id === currentUserId && editing !== msg.id && (
