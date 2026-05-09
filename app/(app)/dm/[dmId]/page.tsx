@@ -24,8 +24,7 @@ export default async function DMPage({ params }: { params: { dmId: string } }) {
       .from('dm_messages')
       .select('*, profiles(*)')
       .eq('dm_id', params.dmId)
-      .order('created_at', { ascending: true })
-      .limit(100),
+      .order('created_at', { ascending: true }),
     supabase
       .from('calls')
       .select('*')
