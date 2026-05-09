@@ -659,7 +659,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#949ba4] mb-2 px-2">
             User Settings
           </p>
-          {(['profile', 'inventory', 'account', ...(profile.is_admin ? ['admin'] : [])] as Tab[]).map(t => (
+          {(['profile', 'account', 'inventory', ...(profile.is_admin ? ['admin'] : [])] as Tab[]).map(t => (
             <button key={t} onClick={() => { setTab(t); if (t === 'admin' && !adminLoaded) loadAdminCodes() }}
               className={`w-full text-left px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize mb-0.5 ${
                 tab === t
