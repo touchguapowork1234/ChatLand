@@ -220,7 +220,7 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
             ) : (
               <>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-xl font-bold leading-tight"><GradientName profile={profile} className="text-[#dbdee1]" /></p>
+                  <p className="text-xl font-bold leading-tight"><GradientName profile={profile} className="text-[#dbdee1]" context="profile" /></p>
                   {profile?.is_premium && (
                     <div className="relative group/badge shrink-0">
                       <img

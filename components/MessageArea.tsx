@@ -125,7 +125,7 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                 <div className="flex-1 min-w-0">
                   {!grouped && (
                     <div className="flex items-baseline gap-2 mb-0.5">
-                      <GradientName profile={msg.profiles} className="font-semibold text-[#dbdee1] text-sm" />
+                      <GradientName profile={msg.profiles} className="font-semibold text-[#dbdee1] text-sm" context="chat" />
                       <span className="text-[11px] text-[#949ba4]">{fmtTime(msg.created_at)}</span>
                     </div>
                   )}

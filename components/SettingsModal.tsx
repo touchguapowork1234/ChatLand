@@ -93,6 +93,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [nameGradientEnabled, setNameGradientEnabled]       = useState(profile.name_gradient_enabled ?? false)
   const [nameGradientPrimary, setNameGradientPrimary]       = useState(profile.name_gradient_primary ?? '#5865f2')
   const [nameGradientSecondary, setNameGradientSecondary]   = useState(profile.name_gradient_secondary ?? '#eb459e')
+  const [nameGradientInChat, setNameGradientInChat]         = useState(profile.name_gradient_in_chat ?? true)
+  const [nameGradientInProfile, setNameGradientInProfile]   = useState(profile.name_gradient_in_profile ?? true)
+  const [nameGradientMoving, setNameGradientMoving]         = useState(profile.name_gradient_moving ?? false)
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -500,6 +503,9 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         nameGradientEnabled   !== (profile.name_gradient_enabled   ?? false) ||
         nameGradientPrimary   !== (profile.name_gradient_primary   ?? '#5865f2') ||
         nameGradientSecondary !== (profile.name_gradient_secondary ?? '#eb459e') ||
+        nameGradientInChat    !== (profile.name_gradient_in_chat    ?? true)  ||
+        nameGradientInProfile !== (profile.name_gradient_in_profile ?? true)  ||
+        nameGradientMoving    !== (profile.name_gradient_moving     ?? false) ||
         animEnabled          !== (profile.animations_enabled    ?? false) ||
         animProfileFade      !== (profile.anim_profile_fade     ?? true)  ||
         animChatFade         !== (profile.anim_chat_fade        ?? true)  ||
@@ -515,6 +521,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       bgAnimEnabled, bgAnimType, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
       sidebarAnimEnabled, sidebarAnimType, profileAttachment,
       nameGradientEnabled, nameGradientPrimary, nameGradientSecondary,
+      nameGradientInChat, nameGradientInProfile, nameGradientMoving,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
       animMessageEntrance, animSmoothTransitions])
 
@@ -715,9 +722,12 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       profile_glow_opacity:  glowOpacity,
       sidebar_animation:     sidebarAnimEnabled ? sidebarAnimType : null,
       profile_attachment:    profileAttachment,
-      name_gradient_enabled:   nameGradientEnabled,
-      name_gradient_primary:   nameGradientEnabled ? nameGradientPrimary : null,
-      name_gradient_secondary: nameGradientEnabled ? nameGradientSecondary : null,
+      name_gradient_enabled:    nameGradientEnabled,
+      name_gradient_primary:    nameGradientEnabled ? nameGradientPrimary : null,
+      name_gradient_secondary:  nameGradientEnabled ? nameGradientSecondary : null,
+      name_gradient_in_chat:    nameGradientInChat,
+      name_gradient_in_profile: nameGradientInProfile,
+      name_gradient_moving:     nameGradientMoving,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -1303,36 +1313,58 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                             </button>
                           </div>
                           {nameGradientEnabled && (
-                            <div className="mt-3 bg-[#232428] rounded-lg p-3 flex items-center gap-4 flex-wrap">
-                              <div className="flex items-center gap-2">
-                                <label className="text-xs text-[#949ba4]">From</label>
-                                <input
-                                  type="color"
-                                  value={nameGradientPrimary}
-                                  onChange={e => setNameGradientPrimary(e.target.value)}
-                                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
-                                />
+                            <div className="mt-3 bg-[#232428] rounded-lg p-3 space-y-3">
+                              {/* Color pickers + preview */}
+                              <div className="flex items-center gap-4 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-[#949ba4]">From</label>
+                                  <input
+                                    type="color"
+                                    value={nameGradientPrimary}
+                                    onChange={e => setNameGradientPrimary(e.target.value)}
+                                    className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-[#949ba4]">To</label>
+                                  <input
+                                    type="color"
+                                    value={nameGradientSecondary}
+                                    onChange={e => setNameGradientSecondary(e.target.value)}
+                                    className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
+                                  />
+                                </div>
+                                <span
+                                  className={`text-sm font-semibold ${nameGradientMoving ? 'gradient-name-moving' : ''}`}
+                                  style={{
+                                    background: `linear-gradient(90deg, ${nameGradientPrimary}, ${nameGradientSecondary})`,
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                  }}
+                                >
+                                  {profile.display_name || profile.username}
+                                </span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <label className="text-xs text-[#949ba4]">To</label>
-                                <input
-                                  type="color"
-                                  value={nameGradientSecondary}
-                                  onChange={e => setNameGradientSecondary(e.target.value)}
-                                  className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent p-0"
-                                />
+                              {/* Sub-toggles */}
+                              <div className="border-t border-[#2b2d31] pt-3 space-y-2">
+                                {([
+                                  { label: 'Visible in chatbox',    state: nameGradientInChat,    set: setNameGradientInChat },
+                                  { label: 'Visible on Profile Card', state: nameGradientInProfile, set: setNameGradientInProfile },
+                                  { label: 'Moving Gradient',       state: nameGradientMoving,    set: setNameGradientMoving },
+                                ] as { label: string; state: boolean; set: (v: boolean) => void }[]).map(({ label, state, set }) => (
+                                  <div key={label} className="flex items-center justify-between gap-4">
+                                    <p className="text-xs text-[#949ba4]">{label}</p>
+                                    <button
+                                      type="button"
+                                      onClick={() => set(!state)}
+                                      className={`relative w-8 h-4 rounded-full transition-colors duration-200 shrink-0 ${state ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                                    >
+                                      <span className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform duration-200 ${state ? 'translate-x-4' : 'translate-x-0'}`} />
+                                    </button>
+                                  </div>
+                                ))}
                               </div>
-                              <span
-                                className="text-sm font-semibold"
-                                style={{
-                                  background: `linear-gradient(90deg, ${nameGradientPrimary}, ${nameGradientSecondary})`,
-                                  WebkitBackgroundClip: 'text',
-                                  WebkitTextFillColor: 'transparent',
-                                  backgroundClip: 'text',
-                                }}
-                              >
-                                {profile.display_name || profile.username}
-                              </span>
                             </div>
                           )}
                         </div>

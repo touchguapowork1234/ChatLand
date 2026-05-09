@@ -60,6 +60,15 @@
   100% { background-position: 0% 50%; }
 }
 
+@keyframes gradient-name-shift {
+  0%   { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+.gradient-name-moving {
+  background-size: 200% auto !important;
+  animation: gradient-name-shift 3s linear infinite;
+}
+
 html.anim-profile-fade .profile-card-animate {
   animation: profileCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

@@ -4,9 +4,10 @@ import { displayName } from '@/lib/types'
 interface Props {
   profile?: Profile | null
   className?: string
+  context?: 'chat' | 'profile'
 }
 
-export default function GradientName({ profile, className }: Props) {
+export default function GradientName({ profile, className, context }: Props) {
   const name = displayName(profile)
   const hasGradient = !!(
     profile?.is_premium &&
@@ -17,9 +18,16 @@ export default function GradientName({ profile, className }: Props) {
 
   if (!hasGradient) return <span className={className}>{name}</span>
 
+  if (context === 'chat' && profile?.name_gradient_in_chat === false)
+    return <span className={className}>{name}</span>
+  if (context === 'profile' && profile?.name_gradient_in_profile === false)
+    return <span className={className}>{name}</span>
+
+  const moving = profile?.name_gradient_moving === true
+
   return (
     <span
-      className={className}
+      className={`${className ?? ''} ${moving ? 'gradient-name-moving' : ''}`.trim()}
       style={{
         background: `linear-gradient(90deg, ${profile!.name_gradient_primary}, ${profile!.name_gradient_secondary})`,
         WebkitBackgroundClip: 'text',
