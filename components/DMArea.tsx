@@ -60,9 +60,10 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
   const scrollRef          = useRef<HTMLDivElement>(null)
   const sentinelRef        = useRef<HTMLDivElement>(null)
   const scrollRestoreRef   = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
-  const skipNextAutoScrollRef = useRef(false)
-  const loadingOlderRef    = useRef(false)
-  const mountedAtRef       = useRef<number>(Date.now())
+  const skipNextAutoScrollRef  = useRef(false)
+  const initialScrollDoneRef   = useRef(false)
+  const loadingOlderRef        = useRef(false)
+  const mountedAtRef           = useRef<number>(Date.now())
   const inputRef      = useRef<HTMLTextAreaElement>(null)
   const fileInputRef  = useRef<HTMLInputElement>(null)
   const dragCounter   = useRef(0)
@@ -160,6 +161,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     setCalls(initialCalls)
     setHasMoreOlder(hasMore ?? false)
     skipNextAutoScrollRef.current = false
+    initialScrollDoneRef.current = false
     scrollRestoreRef.current = null
     loadingOlderRef.current = false
     mountedAtRef.current = Date.now()
@@ -167,7 +169,12 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
 
   useEffect(() => {
     if (skipNextAutoScrollRef.current) { skipNextAutoScrollRef.current = false; return }
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!initialScrollDoneRef.current) {
+      initialScrollDoneRef.current = true
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [timeline.length])
 
   // Restore scroll position after prepending older messages
