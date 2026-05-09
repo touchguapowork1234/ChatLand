@@ -226,8 +226,13 @@ export default function UnreadProvider({ profile, children }: { profile: Profile
       }
     }
 
-    const interval = setInterval(poll, 5000)
-    return () => clearInterval(interval)
+    let interval: ReturnType<typeof setInterval> | null = null
+    const start = () => { if (!interval) interval = setInterval(poll, 5000) }
+    const stop  = () => { if (interval) { clearInterval(interval); interval = null } }
+    const onVisibility = () => document.visibilityState === 'hidden' ? stop() : start()
+    document.addEventListener('visibilitychange', onVisibility)
+    start()
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [profile.id])
 
   return (

@@ -239,12 +239,18 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     return () => { supabase.removeChannel(ch) }
   }, [dmId])
 
-  // Polling fallback — force refresh every 5 seconds in case realtime missed anything
+  // Polling fallback — paused entirely when tab is hidden
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (document.visibilityState === 'hidden') return
+    const interval = setInterval(fetchMessages, 5000)
+    const onVisibility = () => {
       if (document.visibilityState === 'visible') fetchMessages()
-    }, 5000)
-    return () => clearInterval(interval)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [dmId])
 
   // Refetch when tab becomes visible again

@@ -173,12 +173,18 @@ export default function GroupArea({ group: initialGroup, initialMessages, initia
     return () => { supabase.removeChannel(ch) }
   }, [group.id])
 
-  // Polling fallback — catches any messages realtime missed
+  // Polling fallback — paused entirely when tab is hidden
   useEffect(() => {
-    const interval = setInterval(() => {
+    if (document.visibilityState === 'hidden') return
+    const interval = setInterval(fetchNewMessages, 3000)
+    const onVisibility = () => {
       if (document.visibilityState === 'visible') fetchNewMessages()
-    }, 3000)
-    return () => clearInterval(interval)
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
   }, [group.id])
 
   // Refetch when tab becomes visible again

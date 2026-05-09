@@ -88,8 +88,13 @@ export default function ChannelSidebar({ profile }: { profile: Profile }) {
         .from('ai_character').select('name, avatar_url').eq('id', 1).single()
       if (char) setAiCharacter(char as { name: string; avatar_url: string | null })
     }
-    const interval = setInterval(poll, 5000)
-    return () => clearInterval(interval)
+    let interval: ReturnType<typeof setInterval> | null = null
+    const start = () => { if (!interval) interval = setInterval(poll, 5000) }
+    const stop  = () => { if (interval) { clearInterval(interval); interval = null } }
+    const onVisibility = () => document.visibilityState === 'hidden' ? stop() : start()
+    document.addEventListener('visibilitychange', onVisibility)
+    start()
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility) }
   }, [profile.id, serverId])
 
   const blockDMUser = async (userId: string) => {
