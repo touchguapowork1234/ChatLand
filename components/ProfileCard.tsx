@@ -117,43 +117,49 @@ export default function ProfileCard({ userId, currentUserId, onClose }: Props) {
         ref={wrapperRef}
         onMouseMove={handleMouseMove}
         onMouseLeave={handleMouseLeave}
-        className="profile-card-animate relative"
+        className="profile-card-animate"
         style={{ perspective: '1000px', perspectiveOrigin: '50% 50%' }}
       >
-        {/* Profile attachment — outside overflow-hidden card so it can overlap freely */}
-        {profile?.is_premium && profile.profile_attachment && (() => {
-          const att = ATTACHMENTS.find(a => a.id === profile.profile_attachment)
-          return att ? (
-            <img
-              src={att.src}
-              alt={att.label}
-              className="absolute pointer-events-none select-none z-30"
-              style={{ top: -70, right: 36, height: 88 }}
-            />
-          ) : null
-        })()}
-
-        {/* Card — receives the tilt transform */}
+        {/* Tilt wrapper — receives transform so attachment tilts with card */}
         <div
-          className="relative rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col"
+          className="relative w-[420px]"
           style={{
-            ...(loading ? { background: '#232428' } : cardBodyStyle),
             transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) scale(${tiltActive ? 1.02 : 1})`,
             transition: tiltActive
               ? 'transform 0.08s ease-out, box-shadow 0.08s ease-out'
               : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
-            boxShadow: (() => {
-              const glow = (profile?.profile_glow_enabled && profile.profile_glow_color)
-                ? `0 0 32px 8px ${hexToRgba(profile.profile_glow_color, profile.profile_glow_opacity ?? 0.8)}`
-                : null
-              const shadow = tiltActive
-                ? `${-tilt.y * 2}px ${tilt.x * 2}px 40px rgba(0,0,0,0.55), ${-tilt.y * 0.5}px ${tilt.x * 0.5}px 12px rgba(0,0,0,0.3)`
-                : '0 20px 50px rgba(0,0,0,0.4)'
-              return glow ? `${glow}, ${shadow}` : shadow
-            })(),
             willChange: 'transform',
           }}
         >
+          {/* Profile attachment — outside overflow-hidden card, tilts with it */}
+          {profile?.is_premium && profile.profile_attachment && (() => {
+            const att = ATTACHMENTS.find(a => a.id === profile.profile_attachment)
+            return att ? (
+              <img
+                src={att.src}
+                alt={att.label}
+                className="absolute pointer-events-none select-none z-30"
+                style={{ top: -70, right: 36, height: 88 }}
+              />
+            ) : null
+          })()}
+
+          {/* Card */}
+          <div
+            className="relative rounded-lg w-[420px] shadow-2xl overflow-hidden flex flex-col"
+            style={{
+              ...(loading ? { background: '#232428' } : cardBodyStyle),
+              boxShadow: (() => {
+                const glow = (profile?.profile_glow_enabled && profile.profile_glow_color)
+                  ? `0 0 32px 8px ${hexToRgba(profile.profile_glow_color, profile.profile_glow_opacity ?? 0.8)}`
+                  : null
+                const shadow = tiltActive
+                  ? `${-tilt.y * 2}px ${tilt.x * 2}px 40px rgba(0,0,0,0.55), ${-tilt.y * 0.5}px ${tilt.x * 0.5}px 12px rgba(0,0,0,0.3)`
+                  : '0 20px 50px rgba(0,0,0,0.4)'
+                return glow ? `${glow}, ${shadow}` : shadow
+              })(),
+            }}
+          >
           {/* Shine highlight that follows cursor */}
           <div
             className="absolute inset-0 pointer-events-none z-20 rounded-lg"
