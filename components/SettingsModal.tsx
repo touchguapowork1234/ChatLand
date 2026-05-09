@@ -760,7 +760,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={onClose}>
       <div
         className="relative bg-[#2b2d31] rounded-xl w-full max-w-2xl shadow-2xl flex overflow-hidden"
-        style={{ maxHeight: '85vh' }}
+        style={{ maxHeight: '85vh', isolation: 'isolate' }}
         onClick={e => e.stopPropagation()}
       >
         {/* ── Sidebar ── */}
@@ -781,7 +781,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         </div>
 
         {/* ── Content ── */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-8" style={{ willChange: 'scroll-position', contain: 'layout style' }}>
           <div className="flex justify-between items-center mb-6">
             <h2 className={`text-xl font-bold ${tab === 'admin' ? 'text-red-400' : 'text-[#dbdee1]'}`}>
               {tab === 'profile' ? 'Profile' : tab === 'inventory' ? 'Inventory' : tab === 'account' ? 'Account' : 'Admin Panel'}
@@ -1067,7 +1067,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
           {/* ══ Account tab ══ */}
           {tab === 'account' && (
-            <div className="space-y-6">
+            <div className="space-y-6" style={{ contain: 'layout style' }}>
 
               {/* Tag */}
               <div>
