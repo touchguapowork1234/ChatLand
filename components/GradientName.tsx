@@ -24,12 +24,24 @@ export default function GradientName({ profile, className, context }: Props) {
     return <span className={className}>{name}</span>
 
   const moving = profile?.name_gradient_moving === true
+  const dir = profile?.name_gradient_direction === 'right' ? 'right' : 'left'
+  const p = profile!.name_gradient_primary!
+  const s = profile!.name_gradient_secondary!
+
+  // 3-stop loop (p→s→p) makes the animation seamless with no hard edge
+  const gradient = moving
+    ? `linear-gradient(90deg, ${p}, ${s}, ${p})`
+    : `linear-gradient(90deg, ${p}, ${s})`
+
+  const extraClass = moving
+    ? `gradient-name-moving gradient-name-dir-${dir}`
+    : ''
 
   return (
     <span
-      className={`${className ?? ''} ${moving ? 'gradient-name-moving' : ''}`.trim()}
+      className={`${className ?? ''} ${extraClass}`.trim()}
       style={{
-        background: `linear-gradient(90deg, ${profile!.name_gradient_primary}, ${profile!.name_gradient_secondary})`,
+        background: gradient,
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text',

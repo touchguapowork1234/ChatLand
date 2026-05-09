@@ -96,6 +96,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   const [nameGradientInChat, setNameGradientInChat]         = useState(profile.name_gradient_in_chat ?? true)
   const [nameGradientInProfile, setNameGradientInProfile]   = useState(profile.name_gradient_in_profile ?? true)
   const [nameGradientMoving, setNameGradientMoving]         = useState(profile.name_gradient_moving ?? false)
+  const [nameGradientDirection, setNameGradientDirection]   = useState<'left' | 'right'>((profile.name_gradient_direction as 'left' | 'right') ?? 'left')
 
   // Animation settings
   const [animEnabled,           setAnimEnabled]           = useState(profile.animations_enabled   ?? false)
@@ -506,6 +507,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
         nameGradientInChat    !== (profile.name_gradient_in_chat    ?? true)  ||
         nameGradientInProfile !== (profile.name_gradient_in_profile ?? true)  ||
         nameGradientMoving    !== (profile.name_gradient_moving     ?? false) ||
+        nameGradientDirection !== ((profile.name_gradient_direction as 'left' | 'right') ?? 'left') ||
         animEnabled          !== (profile.animations_enabled    ?? false) ||
         animProfileFade      !== (profile.anim_profile_fade     ?? true)  ||
         animChatFade         !== (profile.anim_chat_fade        ?? true)  ||
@@ -521,7 +523,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       bgAnimEnabled, bgAnimType, bgAnimOpacity, decoration, glowEnabled, glowColor, glowOpacity,
       sidebarAnimEnabled, sidebarAnimType, profileAttachment,
       nameGradientEnabled, nameGradientPrimary, nameGradientSecondary,
-      nameGradientInChat, nameGradientInProfile, nameGradientMoving,
+      nameGradientInChat, nameGradientInProfile, nameGradientMoving, nameGradientDirection,
       animEnabled, animProfileFade, animChatFade, animGradient, animHoverGlow,
       animMessageEntrance, animSmoothTransitions])
 
@@ -728,6 +730,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       name_gradient_in_chat:    nameGradientInChat,
       name_gradient_in_profile: nameGradientInProfile,
       name_gradient_moving:     nameGradientMoving,
+      name_gradient_direction:  nameGradientDirection,
       animations_enabled:    animEnabled,
       anim_profile_fade:     animProfileFade,
       anim_chat_fade:        animChatFade,
@@ -1335,9 +1338,11 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                   />
                                 </div>
                                 <span
-                                  className={`text-sm font-semibold ${nameGradientMoving ? 'gradient-name-moving' : ''}`}
+                                  className={`text-sm font-semibold ${nameGradientMoving ? `gradient-name-moving gradient-name-dir-${nameGradientDirection}` : ''}`}
                                   style={{
-                                    background: `linear-gradient(90deg, ${nameGradientPrimary}, ${nameGradientSecondary})`,
+                                    background: nameGradientMoving
+                                      ? `linear-gradient(90deg, ${nameGradientPrimary}, ${nameGradientSecondary}, ${nameGradientPrimary})`
+                                      : `linear-gradient(90deg, ${nameGradientPrimary}, ${nameGradientSecondary})`,
                                     WebkitBackgroundClip: 'text',
                                     WebkitTextFillColor: 'transparent',
                                     backgroundClip: 'text',
@@ -1349,9 +1354,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                               {/* Sub-toggles */}
                               <div className="border-t border-[#2b2d31] pt-3 space-y-2">
                                 {([
-                                  { label: 'Visible in chatbox',    state: nameGradientInChat,    set: setNameGradientInChat },
-                                  { label: 'Visible on Profile Card', state: nameGradientInProfile, set: setNameGradientInProfile },
-                                  { label: 'Moving Gradient',       state: nameGradientMoving,    set: setNameGradientMoving },
+                                  { label: 'Visible in chatbox',      state: nameGradientInChat,    set: setNameGradientInChat },
+                                  { label: 'Visible on Profile Card',  state: nameGradientInProfile, set: setNameGradientInProfile },
                                 ] as { label: string; state: boolean; set: (v: boolean) => void }[]).map(({ label, state, set }) => (
                                   <div key={label} className="flex items-center justify-between gap-4">
                                     <p className="text-xs text-[#949ba4]">{label}</p>
@@ -1364,6 +1368,33 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                                     </button>
                                   </div>
                                 ))}
+                                {/* Moving Gradient + direction picker */}
+                                <div className="flex items-center justify-between gap-4">
+                                  <p className="text-xs text-[#949ba4]">Moving Gradient</p>
+                                  <div className="flex items-center gap-2">
+                                    {nameGradientMoving && (
+                                      <div className="flex rounded overflow-hidden border border-[#3f4147] text-[10px] font-semibold">
+                                        {(['left', 'right'] as const).map(d => (
+                                          <button
+                                            key={d}
+                                            type="button"
+                                            onClick={() => setNameGradientDirection(d)}
+                                            className={`px-2 py-0.5 transition-colors ${nameGradientDirection === d ? 'bg-[#f0b132] text-black' : 'bg-[#2b2d31] text-[#949ba4] hover:text-[#dbdee1]'}`}
+                                          >
+                                            {d === 'left' ? '← Left' : 'Right →'}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => setNameGradientMoving(v => !v)}
+                                      className={`relative w-8 h-4 rounded-full transition-colors duration-200 shrink-0 ${nameGradientMoving ? 'bg-[#f0b132]' : 'bg-[#4e5058]'}`}
+                                    >
+                                      <span className={`absolute left-0.5 top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform duration-200 ${nameGradientMoving ? 'translate-x-4' : 'translate-x-0'}`} />
+                                    </button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}

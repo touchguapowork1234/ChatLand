@@ -42,6 +42,7 @@ export type Profile = {
   name_gradient_in_chat?: boolean | null
   name_gradient_in_profile?: boolean | null
   name_gradient_moving?: boolean | null
+  name_gradient_direction?: string | null
 }
 
 export const userTag = (p?: Profile | null) =>
