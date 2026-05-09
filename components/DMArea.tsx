@@ -327,7 +327,7 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
     const reply = replyTo
     setReplyTo(null)
 
-    const { data: newMsg } = await supabase.from('dm_messages')
+    const { data: newMsg, error } = await supabase.from('dm_messages')
       .insert({
         dm_id: dmId,
         sender_id: currentUserId,
@@ -337,6 +337,16 @@ export default function DMArea({ dmId, otherUser, currentUserId, initialMessages
       })
       .select('*, profiles(*)')
       .single()
+
+    if (error) {
+      console.error('DM send error:', error)
+      // Restore what the user typed so they don't lose it
+      setContent(trimmed)
+      setReplyTo(reply)
+      setSending(false)
+      return
+    }
+
     if (newMsg) setMessages(prev =>
       prev.find(m => m.id === newMsg.id) ? prev : [...prev, newMsg as DmMessage]
     )
