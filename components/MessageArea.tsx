@@ -151,7 +151,7 @@ export default function MessageArea({ channelId, channelName, initialMessages, c
                       </p>
                     </div>
                   ) : (
-                    <p className={`text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date() ? 'rainbow-text' : 'text-[#dcddde]'}`}>
+                    <p className={`text-sm leading-relaxed break-words whitespace-pre-wrap ${msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date() ? 'rainbow-text' : 'text-[#dcddde]'}`} style={msg.profiles?.star_effect_expires_at && new Date(msg.profiles.star_effect_expires_at) > new Date() ? { animationDelay: `-${Date.now() % 3000}ms` } : undefined}>
                       {renderContent(msg.content)}
                       {msg.updated_at && new Date(msg.updated_at).getTime() - new Date(msg.created_at).getTime() > 5000 && (
                         <span className="text-[10px] text-[#949ba4] ml-1.5 whitespace-nowrap">(edited)</span>
