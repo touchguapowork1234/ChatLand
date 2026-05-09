@@ -1,4 +1,7 @@
+'use client'
+
 import { decorationById } from '@/lib/decorations'
+import StaticGif from './StaticGif'
 
 interface Props {
   avatarUrl?: string | null
@@ -7,11 +10,12 @@ interface Props {
   decoration?: string | null
   className?: string
   onClick?: () => void
+  staticDecoration?: boolean
 }
 
 const SCALE = 1.3
 
-export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick }: Props) {
+export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, decoration, className = '', onClick, staticDecoration = false }: Props) {
   const dec     = decorationById(decoration)
   const decSize = dec ? size * SCALE : size
   const expand  = dec ? (decSize - size) / 2 : 0
@@ -46,21 +50,20 @@ export default function AvatarWithDecoration({ avatarUrl, displayInitial, size, 
       </div>
 
       {/* Decoration — centered, sits on top of avatar */}
-      {dec && (
-        <img
-          src={dec.src}
-          alt={dec.label}
-          draggable={false}
-          className="absolute pointer-events-none select-none"
-          style={{
-            width:     decSize,
-            height:    'auto',
-            top:       '50%',
-            left:      '50%',
-            transform: 'translate(-49%, -47%)',
-            zIndex:    10,
-          }}
-        />
+      {dec && (staticDecoration
+        ? <StaticGif
+            src={dec.src}
+            alt={dec.label}
+            className="absolute pointer-events-none select-none"
+            style={{ width: decSize, height: 'auto', top: '50%', left: '50%', transform: 'translate(-49%, -47%)', zIndex: 10 }}
+          />
+        : <img
+            src={dec.src}
+            alt={dec.label}
+            draggable={false}
+            className="absolute pointer-events-none select-none"
+            style={{ width: decSize, height: 'auto', top: '50%', left: '50%', transform: 'translate(-49%, -47%)', zIndex: 10 }}
+          />
       )}
     </div>
   )

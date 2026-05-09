@@ -1288,6 +1288,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                               size={48}
                               decoration={dec.id}
                               className="mx-auto"
+                              staticDecoration
                             />
                             <p className={`text-xs font-medium text-center leading-tight ${decoration === dec.id ? 'text-[#f0b132]' : 'text-[#949ba4]'}`}>{dec.label}</p>
                           </button>
