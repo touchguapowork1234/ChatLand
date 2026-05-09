@@ -234,9 +234,11 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   // ── Admin tab ──
   const [adminCodes, setAdminCodes]   = useState<PremiumCode[]>([])
-  const [adminLoaded, setAdminLoaded] = useState(false)
-  const [genLoading, setGenLoading]   = useState(false)
-  const [genMsg, setGenMsg]           = useState<{ ok: boolean; text: string } | null>(null)
+  const [adminLoaded, setAdminLoaded]     = useState(false)
+  const [genLoading, setGenLoading]       = useState(false)
+  const [genMsg, setGenMsg]               = useState<{ ok: boolean; text: string } | null>(null)
+  const [clearLoading, setClearLoading]   = useState(false)
+  const [clearItemLoading, setClearItemLoading] = useState(false)
   const [copiedCode, setCopiedCode]   = useState<string | null>(null)
 
   const loadAdminCodes = async () => {
@@ -272,8 +274,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   }
 
   const clearRedeemedCodes = async () => {
+    setClearLoading(true)
     await supabase.from('premium_codes').delete().not('redeemed_by', 'is', null)
-    loadAdminCodes()
+    await loadAdminCodes()
+    setClearLoading(false)
   }
 
   // ── Admin item codes ──
@@ -317,8 +321,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
   }
 
   const clearRedeemedItemCodes = async () => {
+    setClearItemLoading(true)
     await supabase.from('item_codes').delete().not('redeemed_by', 'is', null)
-    loadItemCodes()
+    await loadItemCodes()
+    setClearItemLoading(false)
   }
 
   // ── Avatar pick ──
@@ -997,7 +1003,8 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                     <button onClick={loadAdminCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">
                       Refresh
                     </button>
-                    <button onClick={clearRedeemedCodes} className="text-xs text-red-500 hover:text-red-400 transition-colors">
+                    <button onClick={clearRedeemedCodes} disabled={clearLoading} className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50 transition-colors flex items-center gap-1">
+                      {clearLoading && <Loader2 className="w-3 h-3 animate-spin" />}
                       Clear Redeemed
                     </button>
                   </div>
@@ -1053,7 +1060,10 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                   <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Item Codes (last 50)</p>
                   <div className="flex items-center gap-3">
                     <button onClick={loadItemCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">Refresh</button>
-                    <button onClick={clearRedeemedItemCodes} className="text-xs text-red-500 hover:text-red-400 transition-colors">Clear Redeemed</button>
+                    <button onClick={clearRedeemedItemCodes} disabled={clearItemLoading} className="text-xs text-red-500 hover:text-red-400 disabled:opacity-50 transition-colors flex items-center gap-1">
+                      {clearItemLoading && <Loader2 className="w-3 h-3 animate-spin" />}
+                      Clear Redeemed
+                    </button>
                   </div>
                 </div>
                 {!itemCodesLoaded ? (
