@@ -14,6 +14,7 @@ import AvatarWithDecoration from './AvatarWithDecoration'
 type Tab = 'profile' | 'inventory' | 'account' | 'admin'
 
 type PremiumCode = { code: string; redeemed_by: string | null; created_at: string }
+type ItemCode = { id: string; code: string; item_id: string; quantity: number; redeemed_by: string | null; created_at: string }
 
 interface Props {
   profile: Profile
@@ -144,10 +145,12 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
 
   // ── Inventory tab ──
   const [starCount, setStarCount]         = useState(profile.star_count ?? 0)
-  const [totalMsgSent]                    = useState(profile.total_messages_sent ?? 0)
   const [starExpiresAt, setStarExpiresAt] = useState<string | null>(profile.star_effect_expires_at ?? null)
   const [starTimeLeft, setStarTimeLeft]   = useState(0)
   const [useStarLoading, setUseStarLoading] = useState(false)
+  const [itemCodeInput, setItemCodeInput] = useState('')
+  const [itemCodeLoading, setItemCodeLoading] = useState(false)
+  const [itemCodeMsg, setItemCodeMsg]     = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
     if (!starExpiresAt) { setStarTimeLeft(0); return }
@@ -174,6 +177,49 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
       setStarExpiresAt(expiresAt)
     }
     setUseStarLoading(false)
+  }
+
+  const redeemItemCode = async () => {
+    const code = itemCodeInput.trim().toUpperCase()
+    if (!code || itemCodeLoading) return
+    setItemCodeLoading(true)
+    setItemCodeMsg(null)
+
+    const { data: codeData } = await supabase
+      .from('item_codes')
+      .select('*')
+      .eq('code', code)
+      .is('redeemed_by', null)
+      .maybeSingle()
+
+    if (!codeData) {
+      setItemCodeMsg({ ok: false, text: 'Invalid or already used code.' })
+      setItemCodeLoading(false)
+      return
+    }
+
+    const { error: redeemError } = await supabase
+      .from('item_codes')
+      .update({ redeemed_by: profile.id })
+      .eq('id', codeData.id)
+      .is('redeemed_by', null)
+
+    if (redeemError) {
+      setItemCodeMsg({ ok: false, text: 'Failed to redeem code.' })
+      setItemCodeLoading(false)
+      return
+    }
+
+    if (codeData.item_id === 'star') {
+      const newCount = starCount + (codeData.quantity ?? 1)
+      await supabase.from('profiles').update({ star_count: newCount }).eq('id', profile.id)
+      setStarCount(newCount)
+    }
+
+    const itemLabel = codeData.item_id === 'star' ? 'Rainbow Star' : codeData.item_id
+    setItemCodeMsg({ ok: true, text: `Redeemed! You received ${codeData.quantity ?? 1}× ${itemLabel}.` })
+    setItemCodeInput('')
+    setItemCodeLoading(false)
   }
 
   const fmtStarTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
@@ -215,6 +261,46 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
     navigator.clipboard.writeText(code)
     setCopiedCode(code)
     setTimeout(() => setCopiedCode(null), 2000)
+  }
+
+  // ── Admin item codes ──
+  const [itemCodes, setItemCodes]           = useState<ItemCode[]>([])
+  const [itemCodesLoaded, setItemCodesLoaded] = useState(false)
+  const [genItemType, setGenItemType]       = useState('star')
+  const [genItemLoading, setGenItemLoading] = useState(false)
+  const [genItemMsg, setGenItemMsg]         = useState<{ ok: boolean; text: string } | null>(null)
+  const [copiedItemCode, setCopiedItemCode] = useState<string | null>(null)
+
+  const loadItemCodes = async () => {
+    const { data } = await supabase
+      .from('item_codes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setItemCodes((data ?? []) as ItemCode[])
+    setItemCodesLoaded(true)
+  }
+
+  const generateItemCode = async () => {
+    setGenItemLoading(true)
+    setGenItemMsg(null)
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+    const code = `ITEM-${seg()}-${seg()}-${seg()}`
+    const { error } = await supabase.from('item_codes').insert({ code, item_id: genItemType, quantity: 1 })
+    if (error) {
+      setGenItemMsg({ ok: false, text: 'Failed to generate code.' })
+    } else {
+      setGenItemMsg({ ok: true, text: `Code: ${code}` })
+      loadItemCodes()
+    }
+    setGenItemLoading(false)
+  }
+
+  const copyItemCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+    setCopiedItemCode(code)
+    setTimeout(() => setCopiedItemCode(null), 2000)
   }
 
   // ── Avatar pick ──
@@ -660,7 +746,7 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
             User Settings
           </p>
           {(['profile', 'account', 'inventory', ...(profile.is_admin ? ['admin'] : [])] as Tab[]).map(t => (
-            <button key={t} onClick={() => { setTab(t); if (t === 'admin' && !adminLoaded) loadAdminCodes() }}
+            <button key={t} onClick={() => { setTab(t); if (t === 'admin' && !adminLoaded) { loadAdminCodes(); loadItemCodes() } }}
               className={`w-full text-left px-3 py-1.5 rounded text-sm font-medium transition-colors capitalize mb-0.5 ${
                 tab === t
                   ? 'bg-[#404249] text-[#dbdee1]'
@@ -786,31 +872,33 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
           {/* ══ Inventory tab ══ */}
           {tab === 'inventory' && (
             <div className="space-y-6">
-              {/* Progress to next star */}
+              {/* Redeem code */}
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-2">Progress</p>
-                <p className="text-sm text-[#949ba4]">Send messages to earn Stars. Every 50 messages earns you one.</p>
-                <div className="mt-3">
-                  <div className="flex justify-between text-xs text-[#949ba4] mb-1.5">
-                    <span>Messages until next star</span>
-                    <span>{totalMsgSent % 50} / 50</span>
-                  </div>
-                  <div className="h-2 bg-[#1e1f22] rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${(totalMsgSent % 50) / 50 * 100}%`,
-                        background: 'linear-gradient(90deg, #ffd700, #ffaa00)',
-                      }}
-                    />
-                  </div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Redeem Code</p>
+                <div className="flex gap-2">
+                  <input
+                    value={itemCodeInput}
+                    onChange={e => { setItemCodeInput(e.target.value.toUpperCase()); setItemCodeMsg(null) }}
+                    onKeyDown={e => e.key === 'Enter' && redeemItemCode()}
+                    placeholder="ITEM-XXXX-XXXX-XXXX"
+                    className="flex-1 bg-[#1e1f22] text-[#dbdee1] placeholder-[#4e5058] px-3 py-2 rounded-md outline-none focus:ring-2 focus:ring-[#5865f2] text-sm font-mono"
+                  />
+                  <button
+                    onClick={redeemItemCode}
+                    disabled={!itemCodeInput.trim() || itemCodeLoading}
+                    className="px-4 py-2 bg-[#5865f2] hover:bg-[#4752c4] disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm shrink-0"
+                  >
+                    {itemCodeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Redeem'}
+                  </button>
                 </div>
+                {itemCodeMsg && (
+                  <p className={`text-sm mt-2 ${itemCodeMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{itemCodeMsg.text}</p>
+                )}
               </div>
 
               {/* Items */}
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Items</p>
-                {/* Rainbow Star */}
                 <div className="flex items-center gap-4 p-4 bg-[#1e1f22] rounded-lg">
                   <div className="relative shrink-0">
                     <img src="/inventory/star.png" alt="Star" className="w-16 h-16 object-contain" />
@@ -890,6 +978,60 @@ export default function SettingsModal({ profile, onClose, onUpdated }: Props) {
                           <button onClick={() => copyCode(c.code)}
                             className="text-xs text-[#5865f2] hover:text-[#7983f5] shrink-0 transition-colors font-medium">
                             {copiedCode === c.code ? 'Copied!' : 'Copy'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Generate item code */}
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1] mb-3">Generate Item Code</p>
+                <div className="flex gap-2 mb-2">
+                  <select
+                    value={genItemType}
+                    onChange={e => setGenItemType(e.target.value)}
+                    className="bg-[#1e1f22] text-[#dbdee1] px-3 py-2 rounded-md text-sm outline-none focus:ring-2 focus:ring-red-500"
+                  >
+                    <option value="star">Rainbow Star</option>
+                  </select>
+                  <button onClick={generateItemCode} disabled={genItemLoading}
+                    className="px-5 py-2 bg-red-500 hover:bg-red-600 disabled:bg-[#4e5058] disabled:cursor-not-allowed text-white font-semibold rounded-md transition-colors text-sm flex items-center gap-2">
+                    {genItemLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                    Generate
+                  </button>
+                </div>
+                {genItemMsg && (
+                  <p className={`text-sm mt-1 font-mono ${genItemMsg.ok ? 'text-[#23a55a]' : 'text-red-400'}`}>{genItemMsg.text}</p>
+                )}
+              </div>
+
+              {/* Item code list */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#b5bac1]">Item Codes (last 50)</p>
+                  <button onClick={loadItemCodes} className="text-xs text-[#949ba4] hover:text-[#dbdee1] transition-colors">Refresh</button>
+                </div>
+                {!itemCodesLoaded ? (
+                  <p className="text-sm text-[#4e5058]">Loading…</p>
+                ) : itemCodes.length === 0 ? (
+                  <p className="text-sm text-[#4e5058]">No item codes yet.</p>
+                ) : (
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto pr-1">
+                    {itemCodes.map(c => (
+                      <div key={c.id} className={`flex items-center justify-between gap-3 px-3 py-2 rounded-md bg-[#1e1f22] ${c.redeemed_by ? 'opacity-50' : ''}`}>
+                        <div className="min-w-0">
+                          <span className={`font-mono text-sm block ${c.redeemed_by ? 'text-[#4e5058] line-through' : 'text-[#dbdee1]'}`}>{c.code}</span>
+                          <span className="text-[11px] text-[#949ba4]">{c.item_id === 'star' ? 'Rainbow Star' : c.item_id} × {c.quantity}</span>
+                        </div>
+                        {c.redeemed_by ? (
+                          <span className="text-xs text-[#4e5058] shrink-0">Redeemed</span>
+                        ) : (
+                          <button onClick={() => copyItemCode(c.code)}
+                            className="text-xs text-[#5865f2] hover:text-[#7983f5] shrink-0 transition-colors font-medium">
+                            {copiedItemCode === c.code ? 'Copied!' : 'Copy'}
                           </button>
                         )}
                       </div>
