@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import RainbowSync from '@/components/RainbowSync'
+import GradientNameSync from '@/components/GradientNameSync'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${inter.className} bg-[#313338] text-[#dbdee1] antialiased`}>
         <RainbowSync />
+        <GradientNameSync />
         {children}
       </body>
     </html>

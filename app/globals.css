@@ -60,19 +60,9 @@
   100% { background-position: 0% 50%; }
 }
 
-@keyframes gradient-name-left {
-  0%   { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-@keyframes gradient-name-right {
-  0%   { background-position: 200% center; }
-  100% { background-position: 0% center; }
-}
-.gradient-name-moving {
-  background-size: 200% auto !important;
-}
-.gradient-name-dir-left  { animation: gradient-name-left  4s linear infinite; }
-.gradient-name-dir-right { animation: gradient-name-right 4s linear infinite; }
+.gradient-name-moving { background-size: 200% auto !important; }
+.gradient-name-dir-left  { background-position: var(--gn-pos-l, 0%) center !important; }
+.gradient-name-dir-right { background-position: var(--gn-pos-r, 200%) center !important; }
 
 html.anim-profile-fade .profile-card-animate {
   animation: profileCardIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
